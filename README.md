@@ -35,15 +35,17 @@ Installing occam does not compress your output. Turn razor on in one of three
 ways:
 
 ```bash
-# 1. In a session, for that session
-/razor                     # on
-/razor off                 # off
+/razor                     # on, this session
+/razor off                 # off, this session
+/razor forever             # on, and on at every session start
+/razor never               # off, and off at every session start
+```
 
-# 2. Environment variable
+`forever` and `never` write `~/.config/razor/config.json` for you. If you
+would rather set it yourself, either of these does the same thing:
+
+```bash
 export RAZOR_DEFAULT_MODE=on
-
-# 3. Config file, every session on this machine
-mkdir -p ~/.config/razor
 echo '{"enabled": true}' > ~/.config/razor/config.json
 ```
 

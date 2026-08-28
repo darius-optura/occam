@@ -40,6 +40,23 @@ function isEnabledByDefault() {
   }
 }
 
+// Persist the default across sessions. Read-modify-write, so an existing
+// config keeps its other keys.
+function setEnabled(enabled) {
+  try {
+    fs.mkdirSync(getConfigDir(), { recursive: true });
+    const p = getConfigPath();
+    let cfg = {};
+    try { cfg = JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { /* new file */ }
+    if (cfg === null || typeof cfg !== 'object' || Array.isArray(cfg)) cfg = {};
+    cfg.enabled = enabled === true;
+    fs.writeFileSync(p, JSON.stringify(cfg, null, 2) + '\n', { mode: 0o600 });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function safeWriteFlag(flagPath, content) {
   const debug = process.env.RAZOR_DEBUG === '1';
   try {
@@ -132,4 +149,4 @@ function isActive(flagPath) {
   }
 }
 
-module.exports = { isEnabledByDefault, getConfigDir, getConfigPath, safeWriteFlag, isActive };
+module.exports = { isEnabledByDefault, setEnabled, getConfigDir, getConfigPath, safeWriteFlag, isActive };

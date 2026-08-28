@@ -1,7 +1,7 @@
 {
   "name": "occam",
   "description": "Terse output, adversarial review. /razor cuts words and code; /scrutiny and /inquest cut bad diffs.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": { "name": "Darius Cupsa" },
   "homepage": "https://github.com/darius-optura/occam",
   "repository": "https://github.com/darius-optura/occam",

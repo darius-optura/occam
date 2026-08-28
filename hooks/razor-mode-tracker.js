@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { safeWriteFlag, isActive } = require('./razor-config');
+const { safeWriteFlag, isActive, setEnabled } = require('./razor-config');
 
 const claudeDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 const flagPath = path.join(claudeDir, '.razor-active');
@@ -13,6 +13,9 @@ const flagPath = path.join(claudeDir, '.razor-active');
 // bare or namespaced. All three forms mean the same thing.
 const CMDS = new Set(['/razor', '/occam:razor', '/razor:razor']);
 const OFF_ARGS = new Set(['off', 'stop', 'disable']);
+// forever/never write the config file, so the choice survives a restart.
+const FOREVER_ARGS = new Set(['forever', 'always', 'default']);
+const NEVER_ARGS = new Set(['never']);
 
 // The plain-English triggers accept both words. "tldr mode" is what the user
 // already types; everything razor prints back says razor.
@@ -36,9 +39,14 @@ process.stdin.on('end', () => {
 
     const parts = prompt.split(/\s+/);
     if (CMDS.has(parts[0])) {
-      if (OFF_ARGS.has(parts[1] || '')) {
+      const arg = parts[1] || '';
+      if (NEVER_ARGS.has(arg)) {
+        setEnabled(false);
+        try { fs.unlinkSync(flagPath); } catch (e) {}
+      } else if (OFF_ARGS.has(arg)) {
         try { fs.unlinkSync(flagPath); } catch (e) {}
       } else {
+        if (FOREVER_ARGS.has(arg)) setEnabled(true);
         safeWriteFlag(flagPath, 'on');
       }
     }

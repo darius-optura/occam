@@ -43,3 +43,25 @@ test('the flag file round-trips and rejects junk', () => {
   fs.writeFileSync(flag, 'full');
   assert.strictEqual(cfg.isActive(flag), false);
 });
+
+test('setEnabled persists the default and keeps other keys', () => {
+  const x = tmp();
+  const cfg = freshConfig({ XDG_CONFIG_HOME: x });
+  const p = path.join(x, 'razor', 'config.json');
+
+  assert.strictEqual(cfg.isEnabledByDefault(), false);
+
+  assert.strictEqual(cfg.setEnabled(true), true);
+  assert.strictEqual(cfg.isEnabledByDefault(), true);
+
+  // a hand-added key must survive the next write
+  const held = JSON.parse(fs.readFileSync(p, 'utf8'));
+  held.somethingElse = 'keep me';
+  fs.writeFileSync(p, JSON.stringify(held));
+
+  cfg.setEnabled(false);
+  const after = JSON.parse(fs.readFileSync(p, 'utf8'));
+  assert.strictEqual(after.enabled, false);
+  assert.strictEqual(after.somethingElse, 'keep me');
+  assert.strictEqual(cfg.isEnabledByDefault(), false);
+});

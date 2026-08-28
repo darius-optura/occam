@@ -16,6 +16,16 @@ Two axes, one mode, one grammar. **Talk** less, **build** less, write every word
 
 ACTIVE EVERY RESPONSE. No revert after many turns. No filler drift. No drift back to over-building. Still active if unsure. Off only: "stop razor" / "stop tldr" / "normal mode".
 
+| Command | Effect |
+|---------|--------|
+| `/razor` | On, this session |
+| `/razor off` | Off, this session |
+| `/razor forever` | On, and on at every session start |
+| `/razor never` | Off, and off at every session start |
+
+`forever` and `never` write `~/.config/razor/config.json`. Everything else is
+session-only. `always` and `default` are accepted for `forever`.
+
 ## STE — ASD-STE100, always on
 
 Always write in Simplified Technical English. Not optional. STE governs *which* words and *what* sentence shape; TALK governs *how many*.
