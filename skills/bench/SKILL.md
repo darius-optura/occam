@@ -79,6 +79,15 @@ the archive flow must use the same one.
    `worktree-new` creates the branch, so pass the fetched SHA as `--base`
    rather than an existing ref.
 
+   Supacode does not print the path, so resolve `WT_PATH` from `git worktree
+   list --porcelain` — the output is a sequence of `worktree <path>` /
+   `HEAD <sha>` / `branch <ref>` triples per worktree. Find the block whose
+   `branch` line is `refs/heads/inquest/<N>` and read the `worktree <path>`
+   line two lines above it, the first line of that block:
+   ```bash
+   git worktree list --porcelain
+   ```
+
    **herdr** — `herdr worktree create` opens the worktree as a workspace.
    Pass `--no-focus` so provisioning never steals the pane the user is in:
    ```bash
