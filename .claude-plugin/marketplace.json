@@ -3,13 +3,13 @@
   "owner": { "name": "darius-optura" },
   "metadata": {
     "description": "Occam's razor for Claude Code: fewest words, fewest lines, fewest assumptions.",
-    "version": "1.1.1"
+    "version": "1.1.2"
   },
   "plugins": [
     {
       "name": "occam",
       "description": "Terse output and adversarial code review: razor, scrutiny, inquest and bench.",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "author": { "name": "Darius Cupsa" },
       "source": "./"
     }

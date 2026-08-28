@@ -110,8 +110,15 @@ the archive flow must use the same one.
    `<owner>` is `headRepositoryOwner` from step 1:
    ```bash
    WT_PATH="$MAIN_ROOT/.claude/worktrees/<owner>/inquest-<N>"
-   git worktree add "$WT_PATH" "$SHA"
+   git worktree add -b inquest/<N> "$WT_PATH" "$SHA"
    ```
+   `-b` is not optional. `git worktree add <path> <sha>` checks out a
+   **detached HEAD**, and a detached worktree has no `branch` line in
+   `git worktree list --porcelain` — so the archive flow's branch lookup
+   would never find it. With `-b` all three backends land on branch
+   `inquest/<N>` and behave the same. Step 3 deleted any stale branch of
+   that name, which is what makes `-b` safe to re-run.
+
    Leave `WT_ID` empty.
 
 5. Confirm the checkout is at the PR's head before handing it to the caller:
@@ -151,7 +158,9 @@ archive flow trusts that field.
    ask it for the worktree on branch `inquest/<N>`:
    - **supacode**, **git** — scan `git worktree list --porcelain` for the
      block whose `branch` line is `refs/heads/inquest/<N>`, and read its
-     `worktree <path>` line, two lines above.
+     `worktree <path>` line, two lines above. This works because every
+     backend creates the branch; a worktree left on a detached HEAD has no
+     `branch` line and cannot be found this way.
    - **herdr** — `herdr worktree list --cwd "$MAIN_ROOT"`, select on
      `.branch == "inquest/<N>"`, take `.path` and `.open_workspace_id`.
 3. If nothing resolves, stop and report: "no worktree for PR <N>" — there is
