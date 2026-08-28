@@ -124,22 +124,43 @@ under Phases 3–5 instead of blocking after them.
    absent → record `skipped — codex CLI not installed` for the sticky's Codex
    line. No `$BASE` (pure working-tree scope) → `not run — no base ref for
    this scope`. A silent skip is FORBIDDEN.
-3. **Head guard.** Resolve `HEAD_SHA` now (PR mode — Phase 4 reuses it):
-   `HEAD_SHA=$(gh pr view <N> --json headRefOid -q .headRefOid)`. The
-   companion diffs the HEAD of the directory it runs in. In that directory:
+3. **Head guard.** The companion cannot be told which commit to review — it
+   takes `--cwd`, `--job-id` and nothing else that names a revision, so it
+   diffs whatever HEAD is in the directory it runs in. A wrong HEAD means
+   Codex reviews code that is not in the PR and reports it as a pass.
+
+   Resolve `HEAD_SHA` now (PR mode — Phase 4 reuses it), then check the
+   directory Codex will run in. In PR mode that is the `bench` worktree,
+   `$WT_PATH`, already on branch `inquest/<N>`:
    ```bash
-   CUR=$(git rev-parse HEAD)
-   echo "codex-head-guard: CUR=$CUR HEAD_SHA=$HEAD_SHA"
+   HEAD_SHA=$(gh pr view <N> --json headRefOid -q .headRefOid)
+   CODEX_DIR="${WT_PATH:-$PWD}"
+   CUR=$(git -C "$CODEX_DIR" rev-parse HEAD)
+   echo "codex-head-guard: dir=$CODEX_DIR CUR=$CUR HEAD_SHA=$HEAD_SHA"
    ```
-   Equal → launch. Different → check out `$HEAD_SHA` detached (reference.md
-   §3) and stay detached until Phase 6 collects the result — the detached SHA
-   is the code under review, so Phases 3–5 read the right tree. Checkout
-   impossible → do NOT launch; record `invalid — could not check out the PR
-   head`.
-4. **Launch in the background** from the guarded directory, output to a file
+
+   Equal → launch.
+
+   Different, and `$CODEX_DIR` is a `bench` worktree (its branch is
+   `inquest/<N>`) → the PR gained commits after provisioning. Move the branch
+   forward, staying on it (reference.md §3):
+   ```bash
+   git -C "$CODEX_DIR" fetch origin pull/<N>/head
+   git -C "$CODEX_DIR" checkout -B inquest/<N> FETCH_HEAD
+   ```
+
+   Different, and `$CODEX_DIR` is **not** a `bench` worktree → do NOT move
+   it. This is the user's own checkout, and a review is not worth rewriting
+   what they have checked out. Skip Codex and record
+   `invalid — working tree is not at the PR head`.
+
+   **Never detach.** Never check out a raw SHA. Every checkout this skill
+   makes lands on branch `inquest/<N>`; a detached worktree is invisible to
+   `bench --archive`, which finds worktrees by their branch line.
+4. **Launch in the background** against that directory, output to a file
    (reference.md §4 for flags and output shape):
    ```bash
-   node "$COMPANION" adversarial-review --base "$BASE" --scope branch > codex-out.txt 2>&1 &
+   node "$COMPANION" adversarial-review --cwd "$CODEX_DIR" --base "$BASE" --scope branch > codex-out.txt 2>&1 &
    ```
    Do not wait. Continue to Phase 3.
 
@@ -193,8 +214,8 @@ formatting-only changes unless REVIEW.md says otherwise.
 Collect the Phase 2 launch now: not finished after Phase 5 → wait
 here (poll the output file), never abandon it. Parse the tail — the last
 assistant-message JSON carries `verdict` and `summary`; findings precede it
-(reference.md §4). If Phase 2 detached the checkout, restore the prior ref
-after collecting. If the launch was skipped, confirm the recorded verbatim
+(reference.md §4). Phase 2 never detaches, so there is no prior ref to
+restore. If the launch was skipped, confirm the recorded verbatim
 reason — a silent skip is FORBIDDEN. Never report a wrong-HEAD run as a real
 pass.
 

@@ -48,33 +48,41 @@ Mapping: GraphQL `author.login` = REST `user.login`; `databaseId` = REST `id`
 resolved-signal. No `databaseId` available → restrict the fallback to the
 "stay silent" dedup action; never reply without a target id.
 
-## 3. Codex head guard — detach path (Phase 2)
+## 3. Codex head guard — catch-up path (Phase 2)
 
-When `$CUR` differs from `$HEAD_SHA` and checkout is possible (local,
-reversible, allowed under `--dry-run`):
+Only when `$CODEX_DIR` is a `bench` worktree — its branch is
+`inquest/<N>` — and `$CUR` differs from `$HEAD_SHA`, which means the PR
+gained commits after the worktree was provisioned:
 
 ```bash
-PRIOR=$(git rev-parse --abbrev-ref HEAD)   # or $CUR when already detached
-git checkout --detach "$HEAD_SHA"
-# ... launch Codex (Phase 2), review Phases 3-5, collect result (Phase 6) ...
-git checkout "$PRIOR"
+git -C "$CODEX_DIR" fetch origin pull/<N>/head
+git -C "$CODEX_DIR" checkout -B inquest/<N> FETCH_HEAD
+git -C "$CODEX_DIR" rev-parse HEAD          # must now equal $HEAD_SHA
 ```
 
-Stay detached until Phase 6 collects the Codex output — the detached SHA is
-the code under review, so the primary pass reads the right tree too.
+The branch moves forward; the worktree is never detached. Phases 3–5 then
+read the same tree Codex does, and `bench --archive` can still find the
+worktree by its `branch refs/heads/inquest/<N>` line.
+
+In any other directory, do not move the checkout. Record
+`invalid — working tree is not at the PR head` and skip Codex.
 
 ## 4. Codex invocation + output (Phases 2 and 6)
 
 ```bash
 if [ -n "$BASE" ]; then
-  node "$COMPANION" adversarial-review --base "$BASE" --scope branch
+  node "$COMPANION" adversarial-review --cwd "$CODEX_DIR" --base "$BASE" --scope branch
 else
-  node "$COMPANION" adversarial-review --scope branch
+  node "$COMPANION" adversarial-review --cwd "$CODEX_DIR" --scope branch
 fi
 ```
 
-Ignore the verbose `[codex] …` progress lines. There is no `--help`; extra
-tokens are focus text, not flags. Parse the tail: the last assistant-message
+Ignore the verbose `[codex] …` progress lines.
+
+`adversarial-review` takes `--base <ref>`, `--scope <auto|working-tree|branch>`,
+`--model` and `--cwd <path>` as values, and `--json`, `--wait`, `--background`
+as switches. Anything else on the line is focus text. `node "$COMPANION"
+--help` prints the usage if you need to check. Parse the tail: the last assistant-message
 JSON carries `verdict` and `summary`; findings are in the final review text
 before it.
 
