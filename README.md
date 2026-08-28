@@ -83,28 +83,6 @@ CLI and the openai-codex plugin are both present. When either is missing it
 records `skipped — codex CLI not installed` on the sticky and carries on. A
 silent skip is treated as a failure.
 
-## Coming from the dotfiles version
-
-Nothing migrates automatically. The old state files are left where they are:
-
-```bash
-rm -f ~/.claude/.tldr-active ~/.claude/.tldr-history.jsonl ~/.claude/.tldr-statusline-suffix
-```
-
-What changed:
-
-- Intensity levels are gone. `lite` and `ultra`, and the `commit`, `review`
-  and `compress` modes, referenced skills that were never written. Razor is
-  on or off.
-- Token statistics are gone. There is no `/tldr-stats` and no history file.
-- `RAZOR_DEFAULT_MODE` replaces `TLDR_DEFAULT_MODE`, and takes `on`.
-- The skills are renamed: `tldr` → `razor`, `local-review` → `scrutiny`,
-  `pr-review` → `inquest`, `pr-worktree` → `bench`.
-- `inquest` finds its summary comment by the marker `<!-- inquest:sticky -->`.
-  A sticky posted by the old `pr-review` is not recognised, so a re-review of
-  that PR posts a second one.
-- The worktree branch prefix is `inquest/<N>`, and the state file is
-  `.inquest-map.json`.
 
 ## License
 
