@@ -1,13 +1,13 @@
 ---
 name: bench
-description: Provision or archive a Supacode worktree for a GitHub PR. Use when asked to "work on PR #N in isolation", spin up a worktree for a PR, or clean one up. `/pr-worktree <N>` provisions; `/pr-worktree --archive <N>` archives.
+description: Provision or archive a Supacode worktree for a GitHub PR. Use when asked to "work on PR #N in isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions; `/bench --archive <N>` archives.
 ---
 
-# PR Worktree
+# Bench
 
 Provisions (or archives) an isolated Supacode worktree for a GitHub PR, on
-branch `pr-review/<N>`, checked out at the PR's head SHA. Any "work on PR #N
-in isolation" task uses this, not only review — `pr-review` delegates to it
+branch `inquest/<N>`, checked out at the PR's head SHA. Any "work on PR #N
+in isolation" task uses this, not only review — `inquest` delegates to it
 for worktree lifecycle rather than duplicating this logic.
 
 This skill only manages the worktree. It does not review code, post to
@@ -25,7 +25,7 @@ Exactly one of these is expected per invocation.
 
 ## Provision flow
 
-`/pr-worktree <N>`:
+`/bench <N>`:
 
 1. Resolve the PR's head branch and author:
    ```bash
@@ -41,7 +41,7 @@ Exactly one of these is expected per invocation.
    ```
 3. Delete a stale local branch from a prior run, if present:
    ```bash
-   git branch -D pr-review/<N> 2>/dev/null || true
+   git branch -D inquest/<N> 2>/dev/null || true
    ```
 4. Create the worktree through Supacode and capture the printed ID. This
    must be a single Bash call — per the Supacode ID-tracking rule, the
@@ -51,14 +51,14 @@ Exactly one of these is expected per invocation.
    progress noise after the ID instead of before it, this breaks and needs
    revisiting:
    ```bash
-   WT_ID=$(supacode repo worktree-new --branch pr-review/<N> --name pr-review-<N> --base "$SHA" | tail -n1)
+   WT_ID=$(supacode repo worktree-new --branch inquest/<N> --name inquest-<N> --base "$SHA" | tail -n1)
    ```
    `worktree-new` creates the branch, so pass the fetched SHA as `--base`
    rather than an existing ref.
 5. Resolve the worktree's filesystem path (`WT_PATH`) from `git worktree
    list --porcelain` — the output is a sequence of `worktree <path>` /
    `HEAD <sha>` / `branch <ref>` triples per worktree. Find the block whose
-   `branch` line is `refs/heads/pr-review/<N>` and read the `worktree
+   `branch` line is `refs/heads/inquest/<N>` and read the `worktree
    <path>` line two lines above it (the first line of that block):
    ```bash
    git worktree list --porcelain
@@ -80,7 +80,7 @@ checkout. `<owner>` is `headRepositoryOwner` from the `gh pr view` call in
 step 1:
 
 ```bash
-git worktree add "$MAIN_ROOT/.claude/worktrees/<owner>/pr-review-<N>" "$SHA"
+git worktree add "$MAIN_ROOT/.claude/worktrees/<owner>/inquest-<N>" "$SHA"
 ```
 
 Tell the user Supacode will pick up the new worktree the next time it
@@ -90,7 +90,7 @@ leave `id` empty or absent until a real Supacode ID is known.
 
 ## Archive flow
 
-`/pr-worktree --archive <N>`:
+`/bench --archive <N>`:
 
 1. Resolve the worktree ID — primary path, the state map:
    ```bash
@@ -99,7 +99,7 @@ leave `id` empty or absent until a real Supacode ID is known.
    (`$MAP` is resolved as in "State file" below.)
 2. Fallback if the map has no entry (or no `id`): scan
    `git worktree list --porcelain` for the block whose `branch` line is
-   `refs/heads/pr-review/<N>`, read its `worktree <path>` line two lines
+   `refs/heads/inquest/<N>`, read its `worktree <path>` line two lines
    above, and percent-encode that absolute path — this is assumed to be the
    same shape Supacode uses for a worktree ID when it hasn't been given one
    explicitly. Concrete encoding rule (percent-encodes `/` as `%2F`):
@@ -125,12 +125,12 @@ leave `id` empty or absent until a real Supacode ID is known.
 
 ## State file
 
-Plain JSON, no code — both `pr-worktree` and `pr-review` read/write it with
+Plain JSON, no code — both `bench` and `inquest` read/write it with
 `jq`. Lives at the main repo root (not inside any worktree), so it survives
 worktree archival and is visible from every worktree:
 
 ```json
-{ "1234": { "id": "<WT_ID>", "path": "/abs/path/pr-review-1234" } }
+{ "1234": { "id": "<WT_ID>", "path": "/abs/path/inquest-1234" } }
 ```
 
 Resolve the main repo root — this works correctly even when the skill is
@@ -139,7 +139,7 @@ wrongly point at the worktree instead of the main checkout:
 
 ```bash
 MAIN_ROOT=$(git rev-parse --path-format=absolute --git-common-dir | sed 's/\/\.git$//')
-MAP="$MAIN_ROOT/.claude/worktrees/.pr-review-map.json"
+MAP="$MAIN_ROOT/.claude/worktrees/.inquest-map.json"
 ```
 
 If this git's `rev-parse` doesn't support `--path-format` (older git), fall

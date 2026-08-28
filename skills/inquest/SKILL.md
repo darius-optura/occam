@@ -3,25 +3,32 @@ name: inquest
 description: Use when asked to review a PR, do an adversarial or strict review, score merge confidence, or "be strict, don't trust the author" — with a PR number, a branch, or the current working tree. Follow every phase in the skill body; no phase is optional.
 ---
 
-# PR Review
+# Inquest
 
 Adversarial reviewer for a GitHub PR. Hostile stance, merge confidence scored
 /10, inline threads plus one sticky summary, approve at ≥9 or request changes
-below. Reuses `local-review` (scope resolution, criteria loading, adversarial
-pass, fallback rubric) and `pr-worktree` (worktree lifecycle) — follow those
+below. Reuses `scrutiny` (scope resolution, criteria loading, adversarial
+pass, fallback rubric) and `bench` (worktree lifecycle) — follow those
 skills verbatim
 where referenced; do not duplicate them. PR mode writes to GitHub. Local mode
 prints to the terminal only.
 
 Command mechanics live in `reference.md` next to this file (§1–§8). Read the
-section when a phase points at it.
+section when a phase points at it. Both that file and `check-sticky.sh` sit
+beside this one:
+
+```bash
+SKILL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/inquest"
+```
+
+Set it once, before the first phase that uses it.
 
 ## Language
 
 Write all emitted prose — threads, replies, sticky, terminal review — in
-ASD-STE100 per the "STE — ASD-STE100" section of `claude/skills/tldr/SKILL.md`,
+ASD-STE100 per the "STE — ASD-STE100" section of `${CLAUDE_PLUGIN_ROOT}/skills/razor/SKILL.md`,
 in full sentences with articles — no fragment-salad. Always,
-even when session `tldr` mode is off. Keep exact: code, identifiers, error
+even when session `razor` mode is off. Keep exact: code, identifiers, error
 strings, flags, paths, `file:line` anchors, severity tags, score line,
 `Verdict:` line.
 
@@ -75,10 +82,10 @@ todo.
 
 Parse by format, not position:
 
-- `<pr-number>` — provision a worktree via `pr-worktree`, review in PR mode.
+- `<pr-number>` — provision a worktree via `bench`, review in PR mode.
 - Local scope flags (no PR number): `--staged`, `--unstaged`, `--working`,
-  `--full`, or a `<ref>` / `<base>...<head>` range — same as `local-review`.
-- `--archive` — after posting, archive the worktree (`pr-worktree --archive`)
+  `--full`, or a `<ref>` / `<base>...<head>` range — same as `scrutiny`.
+- `--archive` — after posting, archive the worktree (`bench --archive`)
   as the final operation. No-op in local mode.
 - `--dry-run` — full review, zero writes, print what would post.
 
@@ -87,11 +94,11 @@ Parse by format, not position:
 Decide mode and scope, then state the choice in one line
 (e.g. `PR mode: PR #1234, git diff origin/main...HEAD (24 files, +812/-130)`).
 
-1. PR id given, cwd is not that PR's worktree → `pr-worktree <N>`, `cd` into
+1. PR id given, cwd is not that PR's worktree → `bench <N>`, `cd` into
    the printed path. Mode = PR.
-2. PR id given, already inside its worktree (branch `pr-review/<N>`) → review
+2. PR id given, already inside its worktree (branch `inquest/<N>`) → review
    here. Mode = PR.
-3. No PR id → `local-review` "Scope resolution":
+3. No PR id → `scrutiny` "Scope resolution":
    - PR exists for the branch → PR mode. Resolve `N`, `PR_AUTHOR`, `BASE` via
      `gh pr view`. Scope `git diff origin/$BASE...HEAD`.
    - Else branch/working-tree diff → local mode. For a branch or range,
@@ -138,13 +145,13 @@ under Phases 3–5 instead of blocking after them.
 
 ## Phase 3 — Load criteria
 
-Identical to `local-review` "Phase 1: Load criteria". Read in parallel:
+Identical to `scrutiny` "Phase 1: Load criteria". Read in parallel:
 REVIEW.md, the CLAUDE.md chain, the stack checklist
 (`.claude/skills/code-review/stacks/<stack>.md` if present), and the diff with
 enough surrounding context per file.
 
 **REVIEW.md is criteria only**, applied verbatim — scope per the
-Non-negotiables row. REVIEW.md absent → `local-review` "Standard criteria
+Non-negotiables row. REVIEW.md absent → `scrutiny` "Standard criteria
 fallback" and its "Always flag" list. Never invent rules not grounded
 in REVIEW.md, CLAUDE.md, the stack checklist, or the visible code.
 
@@ -159,7 +166,7 @@ included): existing reviews + issue comments, inline review comments
   lines. Semantic: same failure mode in the body. Both match → no new thread;
   reply via `in_reply_to_id` or stay silent. Bot SUMMARY tables (no anchor)
   get the semantic pass only.
-- **Own output.** Own sticky (marker `<!-- pr-review:sticky -->`) → update in
+- **Own output.** Own sticky (marker `<!-- inquest:sticky -->`) → update in
   place, never a finding. Own open inline threads (`user.login == $ME`) →
   match by path/window/failure-mode: still open → reply or stay silent; fixed
   → optionally resolve; no match → genuinely new thread.
@@ -174,7 +181,7 @@ included): existing reviews + issue comments, inline review comments
 
 ## Phase 5 — Adversarial review
 
-Identical to `local-review` "Phase 2: Review" — read that section now and run
+Identical to `scrutiny` "Phase 2: Review" — read that section now and run
 it verbatim: the stance, the five categories, the always-flag scan from
 Phase 3, and all seven distrust passes, every one, every time, stating what
 you checked. Every finding carries: severity tag, in-diff `file:line`,
@@ -197,7 +204,7 @@ Label each finding `(both)` / `(primary)` / `(codex)`.
 
 ## Phase 7 — Score
 
-REVIEW.md rubric when present, else the `local-review` fallback: start at 10;
+REVIEW.md rubric when present, else the `scrutiny` fallback: start at 10;
 Critical −3..−5, Warning −1..−2, missing tests −1; floor 1. Non-0–10 rubric →
 normalize to 0–10 before comparing. Approve threshold is 9. Score honestly.
 
@@ -298,12 +305,12 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
 
 ### PR hygiene
 
-Pull `gh pr view <N> --json title,body`, grade per `local-review` "Phase 4".
+Pull `gh pr view <N> --json title,body`, grade per `scrutiny` "Phase 4".
 Mention in the sticky only what fails.
 
 ### Local mode
 
-Print the review in `local-review`'s output shape, score first. No posts, no
+Print the review in `scrutiny`'s output shape, score first. No posts, no
 labels, no edits.
 
 ### `--dry-run`
@@ -316,4 +323,4 @@ moved it). `--archive` is also skipped — print that it would archive.
 ### `--archive`
 
 PR mode only, the final operation after posting — nothing runs after it.
-Delegate to `pr-worktree --archive <N>`.
+Delegate to `bench --archive <N>`.

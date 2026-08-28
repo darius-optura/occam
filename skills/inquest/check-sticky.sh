@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validates a filled pr-review sticky.md against sticky-template.md.
+# Validates a filled inquest sticky.md against sticky-template.md.
 # Prints "OK" and exits 0 only when the file passes every check.
 set -u
 
@@ -10,8 +10,8 @@ err() { echo "FAIL: $1"; fail=1; }
 [ -f "$f" ] || { echo "FAIL: file not found: $f"; exit 1; }
 
 # 1. Marker must be the first line.
-[ "$(head -1 "$f")" = "<!-- pr-review:sticky -->" ] \
-  || err "marker <!-- pr-review:sticky --> is not line 1"
+[ "$(head -1 "$f")" = "<!-- inquest:sticky -->" ] \
+  || err "marker <!-- inquest:sticky --> is not line 1"
 
 # 2. Required anchors, present and in template order.
 anchors=(

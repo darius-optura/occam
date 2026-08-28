@@ -3,15 +3,15 @@ name: scrutiny
 description: Use when asked to "review my changes", "review this branch", "do a local review", or "score my diff" — a read-only review of the working tree or branch diff, printed to the terminal, nothing posted to GitHub. Follow every phase in the skill body.
 ---
 
-# Local Review
+# Scrutiny
 
-The same adversarial review as `pr-review`, run locally against the working
+The same adversarial review as `inquest`, run locally against the working
 tree or branch diff — no Codex pass, no PR thread history, and **no GitHub
 posting, no fix loop, no thread management.** This is read-only analysis
 that prints a review to the terminal. It keeps the CI review's severity
 tags, scoring, and summary format so scores line up.
 
-For the post-and-fix workflow against a real PR, use `pr-review` instead.
+For the post-and-fix workflow against a real PR, use `inquest` instead.
 
 On invocation, create one TodoWrite todo per phase (scope resolution, load
 criteria, adversarial review + always-flag scan + seven distrust passes,
@@ -33,11 +33,11 @@ Arguments can appear in any order. Parse by format, not position:
 Examples:
 
 ```text
-/local-review                    # auto-detect: branch diff vs base, or working tree
-/local-review main               # diff main...HEAD
-/local-review origin/main...HEAD # explicit range
-/local-review --staged           # just what's staged
-/local-review --unstaged         # just unstaged edits
+/scrutiny                    # auto-detect: branch diff vs base, or working tree
+/scrutiny main               # diff main...HEAD
+/scrutiny origin/main...HEAD # explicit range
+/scrutiny --staged           # just what's staged
+/scrutiny --unstaged         # just unstaged edits
 ```
 
 ## Scope resolution

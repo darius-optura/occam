@@ -1,4 +1,4 @@
-<!-- pr-review:sticky -->
+<!-- inquest:sticky -->
 ### Merge confidence: <N>/10
 
 <Assessment prose, 2-5 sentences: what the PR does, what blocks or clears it. On a re-run: what changed since the last reviewed SHA and which prior findings are now fixed. No headings, no boilerplate.>

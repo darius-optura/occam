@@ -1,4 +1,4 @@
-# pr-review — command reference
+# inquest — command reference
 
 Mechanics for `SKILL.md`. Each section is referenced from a phase. The rules
 live in `SKILL.md`; this file only holds the how.
@@ -107,7 +107,7 @@ verdict.
 
 ```bash
 # APPROVE:
-gh label create claude-approved --color 2ea44f --description "pr-review passed" 2>/dev/null || true
+gh label create claude-approved --color 2ea44f --description "inquest passed" 2>/dev/null || true
 gh pr edit <N> --add-label claude-approved 2>/dev/null || true
 # REQUEST_CHANGES or downgraded COMMENT:
 gh pr edit <N> --remove-label claude-approved 2>/dev/null || true
@@ -133,7 +133,7 @@ Use `$(cat file)` or `-F` (capital, reads the file).
 
 ```bash
 STICKY_ID=$(gh api repos/{owner}/{repo}/issues/<N>/comments --paginate \
-  -q '.[] | select(.body | contains("<!-- pr-review:sticky -->")) | .id' | head -1)
+  -q '.[] | select(.body | contains("<!-- inquest:sticky -->")) | .id' | head -1)
 # non-empty → update in place:
 gh api -X PATCH repos/{owner}/{repo}/issues/comments/$STICKY_ID -f body="$(cat sticky.md)"
 # else create:
