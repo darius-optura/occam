@@ -6,6 +6,24 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.3.0] — 2026-08-31
+
+### Added
+- `skills/scrutiny/review-core.md` — the shared review engine, referenced by
+  section name from both `scrutiny` and `inquest`.
+- `tests/skill-invariants.test.js` — the CLAUDE.md invariants as assertions.
+- `evals/` — behavioral regression suite for `claude plugin eval`
+  (razor invocation/compression, BUILD ladder, scrutiny planted-bug case).
+
+### Changed
+- `razor` description trimmed to triggers only; banned-phrase lists replaced
+  with positive rules; pre-send check deduplicated against STE/TALK.
+- `scrutiny` slimmed to an orchestrator over the review core.
+- `bench` and `scrutiny` trailing principles sections removed (duplication).
+
+### Removed
+- The "Unverified" caveat on the supacode archive command — verified live.
+
 ## [1.2.0] — 2026-08-28
 
 ### Changed
