@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: Scrutiny finds planted bugs in a dirty working tree
+context:
+  scaffold_script: "bash scaffold.sh"
