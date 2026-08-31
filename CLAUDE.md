@@ -64,8 +64,14 @@ node --test tests/*.test.js
 Use the glob. `node --test tests/` fails on this Node — it resolves the
 directory as a module.
 
-Only `razor-config.js` has unit tests, because it is the only file with
-branching logic. Everything else is verified by running it:
+Two test layers. `tests/razor-config.test.js` unit-tests the only file with
+branching logic. `tests/skill-invariants.test.js` asserts the invariants
+below (trigger phrases, load-bearing headings, the sticky marker's four
+files, version agreement) — structural regressions fail here, free and
+deterministic. Behavioral regressions — razor getting verbose, a review
+missing a planted bug — are covered by `evals/` (see `evals/README.md`),
+which invokes the real model; run it before a release that touches a skill
+body. The hooks are verified by running them:
 
 ```bash
 C=$(mktemp -d); X=$(mktemp -d)
@@ -133,14 +139,15 @@ bash skills/inquest/check-sticky.sh /tmp/s.md
 It must complain about unfilled `<…>` placeholders and never about the
 marker.
 
-**`inquest` names sections of `scrutiny` by heading.** It says "Identical to
-`scrutiny` 'Phase 2: Review'" rather than duplicating the text. Renaming a
-heading in `scrutiny` breaks `inquest` with no error. The headings it depends
-on:
+**The review core is shared by heading.**
+`skills/scrutiny/review-core.md` is the single source of truth for the
+review engine; both `scrutiny` and `inquest` run its sections by name.
+Renaming a heading there breaks a caller with no error. The load-bearing
+headings:
 
 ```
-Scope resolution · Phase 1: Load criteria · Phase 2: Review
-Phase 4: PR hygiene · Standard criteria fallback
+Scope resolution · Load criteria · Review · Score
+PR hygiene · Standard criteria fallback
 ```
 
 The three skills ship together for this reason. `inquest` alone is

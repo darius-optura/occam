@@ -178,10 +178,6 @@ archive flow trusts that field.
    ```
    With no `WT_ID`, percent-encode the absolute path and use that
    (`jq -rn --arg p "$WT_PATH" '$p|@uri'`, which encodes `/` as `%2F`).
-   **Unverified — confirm at live test** that this is the exact ID shape
-   `supacode worktree archive -w` accepts, and that this subcommand form is
-   what the installed CLI takes. Supacode is not installed on the machine
-   this skill was written on.
 
    **herdr**
    ```bash
@@ -240,21 +236,3 @@ Delete an entry (used by the archive flow, before the archive call):
 tmp=$(mktemp)
 jq --arg n "<N>" 'del(.[$n])' "$MAP" > "$tmp" && mv "$tmp" "$MAP"
 ```
-
-## Principles
-
-- **Probe, never assume.** Print the resolved backend before using it. A
-  machine with no workspace manager is a supported machine, not an error.
-- **The map remembers the backend.** Archive uses the backend that created
-  the worktree, not the one that happens to be installed now.
-- **No side effects beyond the worktree itself.** This skill does not touch
-  GitHub beyond the read-only `gh pr view` lookup and the fetch. It never
-  posts, comments, or reviews.
-- **Archive is always last.** Nothing in this skill runs after the archive
-  call. Clean up bookkeeping (the map entry) before it, not after.
-- **Capture IDs at creation, don't re-derive them.** `WT_ID` is only ever
-  trustworthy as the value the backend printed at creation. If that capture
-  is lost, ask the backend for its list rather than guessing.
-- **No hardcoded absolute paths.** Resolve `MAIN_ROOT`, worktree paths, and
-  the repo owner dynamically; never assume a specific machine's home
-  directory layout.
