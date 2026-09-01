@@ -79,6 +79,19 @@ test('the sticky marker lives in its four files', () => {
   }
 });
 
+test('bench keeps its backend contract', () => {
+  const bench = read('skills', 'bench', 'SKILL.md');
+  // hw is probed before the bare managers — it bootstraps deps/db on top.
+  const probe = bench.indexOf("fish -c 'type -q hw'");
+  assert.ok(probe > -1, 'bench lost the hw probe');
+  assert.ok(probe < bench.indexOf('command -v supacode'), 'hw must be probed first');
+  // herdr must pin the worktree path, or it lands under ~/.herdr.
+  assert.match(bench, /herdr worktree create[\s\S]{0,200}--path "\$MAIN_ROOT\/\.claude\/worktrees/,
+    'herdr create lost --path');
+  // git must create the branch; a detached worktree is unfindable at archive.
+  assert.ok(bench.includes('git worktree add -b inquest/<N>'), 'git backend lost -b');
+});
+
 test('the three version fields agree', () => {
   const plugin = JSON.parse(read('.claude-plugin', 'plugin.json'));
   const market = JSON.parse(read('.claude-plugin', 'marketplace.json'));

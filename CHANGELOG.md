@@ -6,6 +6,18 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.4.0] — 2026-09-01
+
+### Added
+- `bench` gains an `hw` backend, probed before Supacode and herdr. `hw` is a
+  fish function that wraps herdr and also runs the repo's `.herdr/setup.sh`
+  (dependencies, database, doc symlinks). Bench passes the PR head SHA as its
+  base, and archives through `hw-rm` so `.herdr/teardown.sh` runs.
+
+### Fixed
+- The herdr backend now passes `--path` so worktrees land in
+  `<repo>/.claude/worktrees/`, not under `~/.herdr`.
+
 ## [1.3.0] — 2026-08-31
 
 ### Added

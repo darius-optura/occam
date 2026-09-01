@@ -1,6 +1,6 @@
 ---
 name: bench
-description: Provision or archive an isolated git worktree for a GitHub PR, through Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions; `/bench --archive <N>` archives.
+description: Provision or archive an isolated git worktree for a GitHub PR, through the hw fish function, Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions; `/bench --archive <N>` archives.
 ---
 
 # Bench
@@ -27,8 +27,15 @@ Exactly one of these is expected per invocation.
 
 Resolve `BACKEND` first. Do not assume a workspace manager is present.
 
+`hw` is a fish function (not on PATH), so probe it through fish. It wraps
+herdr and does more than a worktree — it runs the repo's `.herdr/setup.sh`
+(deps, database, doc symlinks) and lays out the workspace — so it wins over
+bare herdr whenever both are present:
+
 ```bash
 if   [ -n "${BENCH_BACKEND:-}" ];          then BACKEND="$BENCH_BACKEND"
+elif command -v fish >/dev/null 2>&1 \
+     && fish -c 'type -q hw' 2>/dev/null;  then BACKEND=hw
 elif command -v supacode >/dev/null 2>&1;  then BACKEND=supacode
 elif command -v herdr    >/dev/null 2>&1;  then BACKEND=herdr
 else                                            BACKEND=git
@@ -68,6 +75,22 @@ the archive flow must use the same one.
 4. Create the worktree with the resolved backend. Resolve `MAIN_ROOT` first
    — see "State file" below.
 
+   **hw** — pass the fetched SHA as the base; `hw` fetches nothing itself
+   when the base is explicit. Run it from `MAIN_ROOT` — it resolves the repo
+   from its cwd:
+   ```bash
+   ( cd "$MAIN_ROOT" && fish -c "hw inquest/<N> $SHA" )
+   ```
+   `hw` creates `$MAIN_ROOT/.claude/worktrees/inquest/<N>`, runs the repo's
+   `.herdr/setup.sh` if present, and opens the workspace. It refuses an
+   existing directory — that lands in "When the backend's own create fails"
+   below. Read `WT_PATH` and `WT_ID` back the same way as **herdr**:
+   ```bash
+   herdr worktree list --cwd "$MAIN_ROOT" \
+     | jq -r --arg b "inquest/<N>" \
+       '.result.worktrees[] | select(.branch==$b) | .path, .open_workspace_id'
+   ```
+
    **supacode** — capture the printed ID in the same Bash call that creates
    the worktree. Per the Supacode ID-tracking rule the ID is never
    re-derived after the fact, only captured at creation. Take the last line
@@ -89,10 +112,13 @@ the archive flow must use the same one.
    ```
 
    **herdr** — `herdr worktree create` opens the worktree as a workspace.
-   Pass `--no-focus` so provisioning never steals the pane the user is in:
+   Pass `--no-focus` so provisioning never steals the pane the user is in.
+   Pass `--path` — without it herdr puts the worktree under `~/.herdr`, not
+   in the repo:
    ```bash
    herdr worktree create --cwd "$MAIN_ROOT" --branch inquest/<N> \
-     --base "$SHA" --label inquest-<N> --no-focus
+     --base "$SHA" --label inquest-<N> --no-focus \
+     --path "$MAIN_ROOT/.claude/worktrees/<owner>/inquest-<N>"
    ```
    Then read both values back from the list, which has a stable shape:
    ```bash
@@ -134,9 +160,10 @@ the archive flow must use the same one.
 
 ### When the backend's own create fails
 
-If `supacode repo worktree-new` or `herdr worktree create` rejects the call
-— the branch already exists and step 3's delete didn't run, or the manager
-is unreachable — fall back to the **git** branch of step 4 and record
+If `hw`, `supacode repo worktree-new` or `herdr worktree create` rejects the
+call — the worktree directory or branch already exists, or the manager
+is unreachable (`hw` needs a running herdr server) — fall back to the
+**git** branch of step 4 and record
 `"backend": "git"` in the map. Say so in the output: the workspace manager
 will not know about this worktree until it next refreshes its list.
 
@@ -161,7 +188,7 @@ archive flow trusts that field.
      `worktree <path>` line, two lines above. This works because every
      backend creates the branch; a worktree left on a detached HEAD has no
      `branch` line and cannot be found this way.
-   - **herdr** — `herdr worktree list --cwd "$MAIN_ROOT"`, select on
+   - **hw**, **herdr** — `herdr worktree list --cwd "$MAIN_ROOT"`, select on
      `.branch == "inquest/<N>"`, take `.path` and `.open_workspace_id`.
 3. If nothing resolves, stop and report: "no worktree for PR <N>" — there is
    nothing to archive.
@@ -171,6 +198,15 @@ archive flow trusts that field.
    closes that surface, and nothing scripted after it can be relied on to
    still run.
 5. Archive as the final operation, with nothing after it in this flow:
+
+   **hw** — `hw-rm` runs the repo's `.herdr/teardown.sh` (drops the
+   database, salvages docs) before it removes the worktree, so a worktree
+   `hw` set up must come down through it:
+   ```bash
+   ( cd "$MAIN_ROOT" && fish -c "hw-rm '$WT_PATH'" )
+   ```
+   If `hw-rm` is absent (`fish -c 'type -q hw-rm'` fails), use the **herdr**
+   command below with `WT_ID`.
 
    **supacode**
    ```bash
