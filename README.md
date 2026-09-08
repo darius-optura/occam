@@ -21,9 +21,10 @@ claude plugin install occam@occam
 | `scrutiny` | Read-only adversarial review of your working tree or branch diff. Prints to the terminal, posts nothing. |
 | `inquest` | Adversarial review of a GitHub PR. Inline threads, one sticky summary, approve at ≥9 or request changes. |
 | `bench` | Provisions and archives an isolated worktree for a PR. |
+| `proof` | Records a proof-of-feature mp4 by driving a real Chrome through a PR or branch with agent-browser. |
 
 Claude Code namespaces a plugin's skills, so both `/razor` and `/occam:razor`
-work. The same holds for the other three.
+work. The same holds for the other four.
 
 `inquest` reads named sections of `scrutiny` rather than duplicating them, and
 delegates worktree lifecycle to `bench`. The three ship together for that
@@ -77,6 +78,22 @@ backend that created a worktree is recorded, so archiving uses the same one.
 
 Only the herdr and plain-git paths have been exercised. The Supacode path is
 written from its documentation and is marked unverified in the skill.
+
+## proof records the feature, you stay off the mouse
+
+```bash
+/proof --setup                  # once per machine: agent-browser, Chrome for Testing
+/proof --init                   # once per repo: writes .claude/proof.json, prints auth save lines
+/proof 3704                     # walk PR 3704 and record it
+/proof requester requests approval; approver denies; requester re-requests; approver approves
+```
+
+The walk is planned from the diff, the PR body and the repo's own docs. A
+story outline names a scenario the video must cover; its actors map to the
+users in `.claude/proof.json`, and each switch is signed out and logged back
+in on camera. Passwords never pass through Claude: each user is an
+`agent-browser auth save … --password-stdin` profile created in your own
+terminal. Needs `ffmpeg` on `PATH`.
 
 ## Optional dependency
 
