@@ -92,6 +92,39 @@ test('bench keeps its backend contract', () => {
   assert.ok(bench.includes('git worktree add -b inquest/<N>'), 'git backend lost -b');
 });
 
+test('proof skill frontmatter names its modes', () => {
+  const skill = read('skills', 'proof', 'SKILL.md');
+  const fm = skill.split('---')[1];
+  assert.ok(/name: proof/.test(fm));
+  assert.ok(/argument-hint:/.test(fm));
+  for (const flag of ['--setup', '--init']) assert.ok(fm.includes(flag), `description lost ${flag}`);
+});
+
+test('proof shell blocks and helper parse', () => {
+  const { execFileSync } = require('node:child_process');
+  execFileSync('sh', ['-n', path.join(root, 'skills', 'proof', 'proof.sh')]);
+  execFileSync('node', ['--check', path.join(root, 'skills', 'proof', 'cursor.js')]);
+  const skill = read('skills', 'proof', 'SKILL.md');
+  const blocks = [...skill.matchAll(/^```bash\n([\s\S]*?)^```/gm)].map(m => m[1]);
+  assert.ok(blocks.length >= 6, `expected ≥6 bash blocks, got ${blocks.length}`);
+  for (const b of blocks) execFileSync('sh', ['-n'], { input: b });
+});
+
+test('proof skill never types a password', () => {
+  const skill = read('skills', 'proof', 'SKILL.md');
+  assert.ok(!/fill @e\d+ .*password/i.test(skill));
+  assert.ok(skill.includes('auth login'));
+});
+
+test('proof reference carries the headings the skill points at', () => {
+  const ref = read('skills', 'proof', 'reference.md');
+  for (const h of ['## Verified agent-browser facts', '## Snapshot and refs',
+                   '## Overlay: pointer and chapter cards', '## Login via auth profiles',
+                   '## Failure catalogue']) {
+    assert.ok(ref.includes(`\n${h}\n`), `reference lost heading "${h}"`);
+  }
+});
+
 test('the three version fields agree', () => {
   const plugin = JSON.parse(read('.claude-plugin', 'plugin.json'));
   const market = JSON.parse(read('.claude-plugin', 'marketplace.json'));
