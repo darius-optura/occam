@@ -6,6 +6,21 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.5.0] — 2026-09-08
+
+### Added
+- `proof` skill: records a proof-of-feature video without a human at the
+  mouse. `/proof --setup` installs agent-browser and Chrome for Testing once
+  per machine; `/proof --init` writes a repo's `.claude/proof.json` and prints
+  the `agent-browser auth save` lines for its users; `/proof [pr|branch]
+  [story]` starts the dev server, logs in through an auth profile, walks the
+  change in a recorded 1440×900 Chrome and writes an mp4 into the repo's
+  `videoOutDir`. An optional story outline names a scenario the walk must
+  cover, with sequential user switches recorded on purpose. Passwords live
+  only in agent-browser auth profiles; the skill never types one. A pointer
+  dot and chapter cards come from an init script so the recording shows
+  what was clicked. Supersedes the local-only `/pof` prototype.
+
 ## [1.4.0] — 2026-09-01
 
 ### Added
