@@ -24,6 +24,19 @@ headed Chrome for Testing. Re-verify before trusting them on another version.
   after one hour. `close` ends the session cleanly.
 - Per-action cost is 10 to 130 ms; the cost of a run is the page, not the driver.
 
+Learned on the first acceptance run (2026-09-08, intent worktree):
+
+- `auth list` prints to **stderr**. Capture it with `2>&1` or every profile reads as missing.
+- The session name goes into a Unix socket path capped at 103 bytes. `proof-<worktree
+  basename>` hit 105 and every `open` failed. The skill hashes the repo root instead.
+- `auth login` during a recording kills the screencast silently. Frames stop, the CLI
+  keeps answering, and `record stop` never returns. Plain cross-document navigation does
+  not break it. Record in segments: stop on the login page, log in, start the next one.
+- A hung `record stop` leaves an mp4 with no moov atom. Kill the daemon pid; the child
+  ffmpeg gets EOF and writes the trailer, so the frames up to the break are recoverable.
+- One recovered file had frames in a 3180×1140 canvas. Cause unknown, did not recur.
+  Check `ffprobe … stream=width,height` on the joined file; expect `1440,900`.
+
 ## Snapshot and refs
 
 Refs are scoped to the snapshot that produced them. The loop for every action:
@@ -31,6 +44,9 @@ Refs are scoped to the snapshot that produced them. The loop for every action:
 1. `snapshot -i` and read the refs.
 2. `highlight @eN` on the target, `wait 400`, then `click @eN` or `fill @eN <text>`.
 3. `wait 700` for pacing. After any navigation, snapshot again before acting.
+
+Match labels loosely. A textbox named `Comment (optional)` does not match `^Comment$`;
+a missed ref silently skips the action, and the run reports success without it.
 
 Streams and slow renders: `wait "<end text>"` when the page has stable end text. When
 it does not, loop `wait 30000` then `snapshot -i` and inspect, at most four times.
@@ -69,8 +85,10 @@ agent-browser auth login <profile> \
 ```
 
 Verify with `get url`: the URL must no longer contain `LOGIN_PATH`. A user switch is
-sign out through `LOGOUT_PATH` or the user menu, confirm the login page, then
-`auth login <next profile>`, all in the same tab.
+sign out through `LOGOUT_PATH` or the user menu, confirm the login page, `record stop`,
+`auth login <next profile>`, `record start <next segment>`, all in the same tab.
+`proof_seg_next` names the segments; `proof_concat` joins them with the ffmpeg concat
+demuxer, stream copy, no re-encode.
 
 ## Failure catalogue
 
@@ -89,4 +107,6 @@ Sentinels come from `proof.sh`. Each row names the mode or command that fixes it
 | `DEAD` | server died mid-run | log tail; teardown; STOP |
 | login URL still contains `LOGIN_PATH` | form not found or credentials rejected | close browser, teardown, STOP with reason |
 | chapter unreachable | UI path does not exist on this branch | skip, continue, list under `gaps` |
-| `MP4_MISSING <path>` | `record stop` produced nothing | report, teardown |
+| `MP4_MISSING …` | `record stop` produced nothing, or no segment has data | report, teardown |
+| `record stop` hangs | screencast died, usually `auth login` mid-recording | kill the daemon pid; ffmpeg writes the trailer; join what exists |
+| `SEGMENTS_JOINED n -> <path>` | not a failure; n segments became one file | continue to `proof_move_video` |

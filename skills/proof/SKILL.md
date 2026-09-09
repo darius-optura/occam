@@ -41,7 +41,8 @@ Parse the argument by format, in this order:
 - One tab for the whole walk. Close any extra tab and note the gap.
 - Create only the data the feature itself creates. No fixtures, no cleanup writes.
 - Never `git add` the video or `.claude/proof.json`. `--init` writes; the developer commits.
-- Login happens before recording starts. User switches happen inside the recording.
+- Login happens before recording starts. Never run `auth login` while a recording runs:
+  stop, log in, start the next segment. `proof_concat` joins the segments at the end.
 - If a chapter is unreachable, skip it and report the gap. Do not improvise unrelated clicks.
 - On any abort after the server step: `record stop` if recording, `agent-browser close`,
   `proof_teardown`, then report the reason.
@@ -107,9 +108,9 @@ command -v ffmpeg >/dev/null 2>&1 || { echo "ffmpeg missing: brew install ffmpeg
 proof_config "$(git rev-parse --show-toplevel)"
 proof_set SKILL_DIR "$SKILL_DIR"
 . "$HOME/.claude/proof/out/run-current.env"
-have=$(agent-browser auth list 2>/dev/null)
+have=$(agent-browser auth list 2>&1)   # auth list prints to stderr; never drop it
 for p in $USER_PROFILES; do
-  printf '%s\n' "$have" | grep -q "$p" || { echo "PROFILE_MISSING $p"; missing=1; }
+  printf '%s\n' "$have" | grep -qF -- "$p" || { echo "PROFILE_MISSING $p"; missing=1; }
 done
 [ -z "$missing" ] || { echo "run the auth save line for each missing profile (see /proof --init)"; exit 1; }
 echo PREFLIGHT_OK
@@ -188,7 +189,9 @@ and tore down anything it started. STOP.
 set -e
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"
 proof_alive
-export AGENT_BROWSER_SESSION="proof-$(basename "$REPO_ROOT")"
+# Short and stable per repo root. The session name lands in a Unix socket path, which is
+# capped at 103 bytes; a worktree basename overflows it and every `open` fails.
+export AGENT_BROWSER_SESSION="proof-$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"
 proof_set SESSION "$AGENT_BROWSER_SESSION" >/dev/null
 agent-browser --args "--force-device-scale-factor=1" open "$BASE_URL$LOGIN_PATH" --headed --init-script "$SKILL_DIR/cursor.js"
 agent-browser set viewport 1440 900
@@ -206,10 +209,13 @@ Every later block exports `AGENT_BROWSER_SESSION="$SESSION"` after sourcing run 
 
 ### 5. Record
 
+The video is recorded in segments, one per logged-in user, and joined at the end.
+`proof_seg_next` names the next segment and remembers it.
+
 ```bash
 set -e
-. "$HOME/.claude/proof/out/run-current.env"; export AGENT_BROWSER_SESSION="$SESSION"
-agent-browser record start "$MP4_OUT"
+. "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
+agent-browser record start "$(proof_seg_next)"
 ```
 
 ### 6. Walk
@@ -224,9 +230,23 @@ Per chapter, following "Snapshot and refs" in `reference.md`:
    end text, loop `wait 30000` plus `snapshot -i`, at most four times.
 5. Batch independent steps in one `agent-browser batch "…" "…"` call.
 
-Switch user chapter: sign out through the `LOGOUT_PATH` control or the user menu,
-confirm the login page appears, `agent-browser auth login <next profile>`, `get url`.
-Recorded on purpose. Same tab throughout.
+Switch user chapter. Show the chapter card, sign out through the `LOGOUT_PATH` control
+or the user menu, confirm the login page appears. Then run this as one Bash call:
+
+```bash
+set -e
+. "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
+agent-browser record stop
+agent-browser auth login '<next profile>'
+agent-browser wait 1500
+agent-browser get url
+agent-browser record start "$(proof_seg_next)"
+```
+
+`auth login` while a recording runs kills the screencast silently; frames stop, the walk
+goes on, and `record stop` then hangs the daemon. Always stop before and start after.
+The sign-out and the landing page are on camera; only the credential entry is not.
+Same tab throughout.
 
 Unreachable chapter: skip, keep going, record it for `gaps`.
 
@@ -238,7 +258,7 @@ Run this block even if the walk aborted partway.
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
 agent-browser record stop || true
 agent-browser close || true
-proof_move_video "$MP4_OUT" || echo "no video to move"
+proof_concat && proof_move_video "$MP4_OUT" || echo "no video to move"
 proof_teardown
 ```
 
