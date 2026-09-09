@@ -102,6 +102,32 @@ proof_teardown() { # kill the port listener only if proof started it
   fi
 }
 
+proof_seg_next() { # print the next segment path and remember it in SEGMENTS
+  proof_paths; . "$PROOF_RUN"
+  n=$(( $(printf '%s' "${SEGMENTS:-}" | wc -w) + 1 ))
+  seg="${MP4_OUT%.mp4}-seg$n.mp4"
+  proof_set SEGMENTS "${SEGMENTS:+$SEGMENTS }$seg" >/dev/null
+  echo "$seg"
+}
+
+proof_concat() { # join the non-empty SEGMENTS into MP4_OUT; a single segment is renamed
+  proof_paths; . "$PROOF_RUN"
+  keep=""
+  for s in ${SEGMENTS:-}; do [ -s "$s" ] && keep="$keep $s"; done
+  # shellcheck disable=SC2086
+  set -- $keep
+  [ $# -gt 0 ] || { echo "MP4_MISSING no segment has data"; return 1; }
+  if [ $# -eq 1 ]; then
+    mv "$1" "$MP4_OUT"
+  else
+    list="$PROOF_HOME/out/concat.txt"; : > "$list"
+    for s in "$@"; do printf "file '%s'\n" "$s" >> "$list"; done
+    ffmpeg -y -loglevel error -f concat -safe 0 -i "$list" -c copy "$MP4_OUT" || return 1
+    rm -f "$@"
+  fi
+  echo "SEGMENTS_JOINED $# -> $MP4_OUT"
+}
+
 proof_move_video() { # proof_move_video <mp4>  — verify and move into REPO_ROOT/VIDEO_OUT_DIR
   proof_paths; . "$PROOF_RUN"
   [ -s "$1" ] || { echo "MP4_MISSING $1"; return 1; }

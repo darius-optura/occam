@@ -38,6 +38,39 @@ test('proof_config exports quoted env and rejects a missing key', () => {
   assert.throws(run, /CONFIG_MISSING_KEY loginPath/);
 });
 
+const hasFfmpeg = (() => { try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); return true; } catch { return false; } })();
+
+test('proof_seg_next numbers segments and proof_concat joins them', { skip: !hasFfmpeg && 'ffmpeg not on PATH' }, () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe' }).trim();
+  run(`proof_set MP4_OUT "${home}/out/x-2026-09-09.mp4"`);
+  const seg1 = run('proof_seg_next');
+  const seg2 = run('proof_seg_next');
+  assert.strictEqual(seg1, `${home}/out/x-2026-09-09-seg1.mp4`);
+  assert.strictEqual(seg2, `${home}/out/x-2026-09-09-seg2.mp4`);
+  for (const s of [seg1, seg2]) {
+    execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=64x64:r=10',
+      '-t', '0.3', '-pix_fmt', 'yuv420p', s], { stdio: 'ignore' });
+  }
+  const out = run('proof_concat');
+  assert.match(out, /SEGMENTS_JOINED 2 -> /);
+  assert.ok(fs.statSync(`${home}/out/x-2026-09-09.mp4`).size > 0);
+  assert.ok(!fs.existsSync(seg1) && !fs.existsSync(seg2), 'segments removed after join');
+});
+
+test('proof_concat renames a lone segment and fails on none', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe' }).trim();
+  run(`proof_set MP4_OUT "${home}/out/y.mp4"`);
+  assert.throws(() => run('proof_concat'), e => e.status === 1 && /MP4_MISSING/.test(e.stdout));
+  const seg = run('proof_seg_next');
+  fs.writeFileSync(seg, 'not empty');
+  assert.match(run('proof_concat'), /SEGMENTS_JOINED 1 -> /);
+  assert.ok(fs.existsSync(`${home}/out/y.mp4`));
+});
+
 test('proof_slug is filesystem safe', () => {
   const out = execFileSync('sh', ['-c', `. "${sh}"; proof_slug "Feat/OPT-3503 re-request flow!"`],
     { encoding: 'utf8' }).trim();

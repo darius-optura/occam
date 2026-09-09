@@ -116,6 +116,23 @@ test('proof skill never types a password', () => {
   assert.ok(skill.includes('auth login'));
 });
 
+test('proof keeps the fixes from the first acceptance run', () => {
+  const skill = read('skills', 'proof', 'SKILL.md');
+  // auth list prints to stderr; dropping it read every profile as missing.
+  assert.ok(skill.includes('agent-browser auth list 2>&1'), 'preflight dropped stderr again');
+  // a worktree basename overflows the 103-byte socket path; hash the root instead.
+  assert.ok(!/AGENT_BROWSER_SESSION="proof-\$\(basename/.test(skill), 'session name is a basename again');
+  assert.ok(/AGENT_BROWSER_SESSION="proof-\$\(printf '%s' "\$REPO_ROOT" \| cksum/.test(skill), 'session name lost the hash');
+  // auth login during a recording kills the screencast; the switch must stop first.
+  const sw = skill.slice(skill.indexOf('Switch user chapter'));
+  const stop = sw.indexOf('agent-browser record stop'), login = sw.indexOf('agent-browser auth login');
+  const start = sw.indexOf('agent-browser record start');
+  assert.ok(stop > -1 && login > stop && start > login, 'user switch must stop, log in, then start');
+  assert.ok(skill.includes('proof_concat'), 'segments are never joined');
+  // highlight is a debugging aid that paints a red outline into the video.
+  assert.ok(!/agent-browser highlight @/.test(skill), 'highlight is back in the walk');
+});
+
 test('proof reference carries the headings the skill points at', () => {
   const ref = read('skills', 'proof', 'reference.md');
   for (const h of ['## Verified agent-browser facts', '## Snapshot and refs',

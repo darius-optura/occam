@@ -6,6 +6,24 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.5.1] — 2026-09-09
+
+### Fixed
+- `proof` preflight read every auth profile as missing. `agent-browser auth
+  list` prints to stderr and the block discarded it. Now captured with `2>&1`
+  and matched as a fixed string.
+- `proof` named its browser session after the repo root's basename. In a
+  worktree that overflowed the 103-byte Unix socket path and every `open`
+  failed. The session is now `proof-<cksum of the repo root>`.
+- `proof` ran `auth login` inside the recording. That kills the screencast
+  silently, the walk continues with no frames, and `record stop` hangs the
+  daemon. The recording is now one segment per logged-in user: stop on the
+  login page, log in, start the next segment; `proof_concat` joins them with
+  a stream copy at the end.
+- `proof` no longer calls `agent-browser highlight` before a click. It is a
+  debugging aid and painted a red outline into every video. The pointer moves
+  onto the target with `hover` instead.
+
 ## [1.5.0] — 2026-09-08
 
 ### Added
