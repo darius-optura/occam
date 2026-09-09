@@ -100,6 +100,33 @@ terminal. Needs `ffmpeg` on `PATH`.
 upload API. `--init` writes a `loom.profile` directory and prints a one-time
 login command for it; the upload is best-effort and never fails the recording.
 
+A filled `.claude/proof.json`, for a repo whose dev server picks its own port:
+
+```json
+{
+  "serverCommand": "INTENT_WORKTREE_SKIP_SEED=true npm run dev:isolated",
+  "port": null,
+  "portCommand": "npm run -s worktree:info",
+  "portRegex": "Dev port:[[:space:]]*([0-9]+)",
+  "readyPath": "/auth/login",
+  "loginPath": "/auth/login",
+  "logoutPath": "/auth",
+  "videoOutDir": "docs/proof",
+  "stillKeep": 4,
+  "users": [
+    { "role": "requester", "email": "requester@example.com", "profile": "proof-intent-requester" },
+    { "role": "reviewer",  "email": "reviewer@example.com",  "profile": "proof-intent-reviewer" }
+  ],
+  "loom": { "profile": "~/.config/proof/loom" }
+}
+```
+
+`port` is a fixed number, or `null` with `portCommand` plus a `portRegex` that
+captures it. `readyPath` must answer 200 once the server is up. `logoutPath`
+is optional. `stillKeep` is the seconds each still screen keeps after
+trimming; `0` disables. Each user's `profile` is an `agent-browser auth save`
+name; `role` is what a story outline calls that actor. `loom` is optional.
+
 ## Optional dependency
 
 `inquest` runs a second opinion through the Codex companion when the `codex`
