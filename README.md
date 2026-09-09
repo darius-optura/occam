@@ -86,6 +86,7 @@ written from its documentation and is marked unverified in the skill.
 /proof --init                   # once per repo: writes .claude/proof.json, prints auth save lines
 /proof 3704                     # walk PR 3704 and record it
 /proof requester requests approval; approver denies; requester re-requests; approver approves
+/proof 3704 --loom              # same, then upload to Loom and print the share link
 ```
 
 The walk is planned from the diff, the PR body and the repo's own docs. A
@@ -94,6 +95,10 @@ users in `.claude/proof.json`, and each switch is signed out and logged back
 in on camera. Passwords never pass through Claude: each user is an
 `agent-browser auth save … --password-stdin` profile created in your own
 terminal. Needs `ffmpeg` on `PATH`.
+
+`--loom` uploads the finished mp4 through Loom's web UI, since Loom has no
+upload API. `--init` writes a `loom.profile` directory and prints a one-time
+login command for it; the upload is best-effort and never fails the recording.
 
 ## Optional dependency
 

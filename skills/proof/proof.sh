@@ -42,13 +42,15 @@ if (c.port == null && !(c.portCommand && c.portRegex)) { console.error("CONFIG_M
 if (!Array.isArray(c.users) || !c.users.length || c.users.some(u => !u.profile || !u.email)) { console.error("CONFIG_MISSING_KEY users[].profile/email"); process.exit(1); }
 if (String(c.videoOutDir).startsWith("/")) { console.error("CONFIG_INVALID videoOutDir must be repo-relative"); process.exit(1); }
 if (c.stillKeep != null && !(Number(c.stillKeep) >= 0)) { console.error("CONFIG_INVALID stillKeep must be a number of seconds, 0 disables"); process.exit(1); }
+if (c.loom != null && !(c.loom && c.loom.profile)) { console.error("CONFIG_INVALID loom needs a profile directory: {\"profile\": \"~/.config/proof/loom\"}"); process.exit(1); }
+const loomProfile = c.loom ? String(c.loom.profile).replace(/^~(?=\/|$)/, process.env.HOME) : "";
 const q = v => "'"'"'" + String(v ?? "").replace(/'"'"'/g, "'"'"'\\'"'"''"'"'") + "'"'"'";
 const out = [
   ["REPO_ROOT", process.argv[2]],
   ["SERVER_COMMAND", c.serverCommand], ["PORT_FIXED", c.port ?? ""],
   ["PORT_COMMAND", c.portCommand ?? ""], ["PORT_REGEX", c.portRegex ?? ""],
   ["READY_PATH", c.readyPath], ["LOGIN_PATH", c.loginPath], ["LOGOUT_PATH", c.logoutPath ?? ""],
-  ["VIDEO_OUT_DIR", c.videoOutDir], ["STILL_KEEP", c.stillKeep ?? 4],
+  ["VIDEO_OUT_DIR", c.videoOutDir], ["STILL_KEEP", c.stillKeep ?? 4], ["LOOM_PROFILE", loomProfile],
   ["USER_PROFILES", c.users.map(u => u.profile).join(" ")],
   ["USER_EMAILS", c.users.map(u => u.email).join(" ")],
   ["USER_ROLES", c.users.map(u => u.role ?? "").join(" ")],
@@ -181,4 +183,79 @@ proof_move_video() { # proof_move_video <mp4>  — verify and move into REPO_ROO
   fi
   proof_set MP4 "$dest" >/dev/null; proof_set DURATION "$dur" >/dev/null
   echo "MP4=$dest"; echo "DURATION=$dur"
+}
+
+# --- Loom upload -------------------------------------------------------------------------
+# Loom has no upload API. These drive the web UI in a dedicated persistent Chrome profile
+# (LOOM_PROFILE from .claude/proof.json) that the developer logged into once. The real Chrome
+# profile is no use: its cookies are Keychain-bound to the Chrome binary and Chrome for
+# Testing cannot read them. Verified 2026-09-09; see "Loom" in reference.md.
+
+proof_loom_session() { # export the Loom session name; separate from the recording session
+  proof_paths; . "$PROOF_RUN"
+  export AGENT_BROWSER_SESSION="proof-loom-$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"
+}
+
+proof_loom_check() { # proof_loom_check — open the library; LOOM_OK, or LOOM_LOGIN_REQUIRED with the fix
+  proof_paths; . "$PROOF_RUN"
+  [ -n "${LOOM_PROFILE:-}" ] || { echo "LOOM_NOT_CONFIGURED add loom.profile to .claude/proof.json (see /proof --init)"; return 1; }
+  proof_loom_session
+  agent-browser --profile "$LOOM_PROFILE" open https://www.loom.com/looms/videos >/dev/null 2>&1 \
+    || { echo "LOOM_BROWSER_FAILED"; return 1; }
+  agent-browser wait 3000 >/dev/null 2>&1
+  url=$(agent-browser get url 2>/dev/null)
+  case "$url" in
+    https://www.loom.com/looms/videos*) echo "LOOM_OK"; return 0 ;;
+    *) echo "LOOM_LOGIN_REQUIRED $url"
+       echo "run: agent-browser --profile $LOOM_PROFILE --headed open https://www.loom.com/login"
+       return 1 ;;
+  esac
+}
+
+proof_loom_wait_login() { # proof_loom_wait_login — headed login window; poll ≤300 s; never navigate meanwhile
+  # The Google/Atlassian callback is several hops. Any `open` during it kills the login.
+  proof_paths; . "$PROOF_RUN"; proof_loom_session
+  agent-browser --profile "$LOOM_PROFILE" --headed open https://www.loom.com/login >/dev/null 2>&1
+  i=0
+  while [ $i -lt 100 ]; do
+    url=$(agent-browser get url 2>/dev/null)
+    case "$url" in
+      https://www.loom.com/login*|https://www.loom.com/signup*|https://www.loom.com/api/auth*|"") ;;
+      https://www.loom.com/*) echo "LOOM_LOGGED_IN $url"; return 0 ;;
+    esac
+    sleep 3; i=$((i+1))
+  done
+  echo "LOOM_LOGIN_TIMEOUT"; return 1
+}
+
+proof_loom_upload() { # proof_loom_upload <mp4>  — upload through the web UI; LOOM_URL=<share link> or LOOM_FAILED <why>
+  proof_paths; . "$PROOF_RUN"
+  [ -s "$1" ] || { echo "LOOM_FAILED mp4 missing: $1"; return 1; }
+  proof_loom_check || return 1
+  proof_loom_session
+  # Two hidden file inputs sit on the library page before any menu opens; set the file there.
+  agent-browser upload 'input[type=file]' "$1" >/dev/null 2>&1 \
+    || { echo "LOOM_FAILED no file input on the library page"; return 1; }
+  # The "New video" menu opens only on a real pointer click at the text. `click @ref` on the
+  # button and DOM .click() on it or its wrapper do nothing.
+  agent-browser find text "New video" click >/dev/null 2>&1 || { echo "LOOM_FAILED New video button not found"; return 1; }
+  agent-browser wait 1000 >/dev/null 2>&1
+  agent-browser find text "Upload a video" click >/dev/null 2>&1 || { echo "LOOM_FAILED no Upload a video item (plan without upload?)"; return 1; }
+  agent-browser wait 1500 >/dev/null 2>&1
+  agent-browser snapshot 2>&1 | grep -q '1 file selected' || { echo "LOOM_FAILED dialog did not take the file"; return 1; }
+  agent-browser find text "Upload 1 file" click >/dev/null 2>&1 || { echo "LOOM_FAILED Upload 1 file button not found"; return 1; }
+  # Loom shows "Uploading: N%" then navigates to the share page. Poll ≤10 min.
+  i=0; url=""
+  while [ $i -lt 200 ]; do
+    url=$(agent-browser get url 2>/dev/null)
+    case "$url" in https://www.loom.com/share/*) break ;; esac
+    sleep 3; i=$((i+1))
+  done
+  case "$url" in
+    https://www.loom.com/share/*) ;;
+    *) echo "LOOM_FAILED upload did not reach a share page in 600 s"; agent-browser snapshot 2>&1 | grep -i -E 'upload|error|fail' | head -5; return 1 ;;
+  esac
+  agent-browser close >/dev/null 2>&1
+  proof_set LOOM_URL "$url" >/dev/null
+  echo "LOOM_URL=$url"
 }
