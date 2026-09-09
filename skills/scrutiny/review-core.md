@@ -4,6 +4,8 @@ The shared review engine. `scrutiny` (local, terminal-only) and `inquest`
 (PR mode, writes to GitHub) both follow the sections below by name — the
 headings are load-bearing; renaming one breaks a caller with no error. The
 rules live here once; the callers own process, order, and output shape.
+"Review" runs in fresh subagents, never in the calling session — see
+"Dispatch" and "Judge".
 
 ## Scope resolution
 
@@ -126,6 +128,132 @@ Skip these unless REVIEW.md says otherwise:
 - Generated files (migrations, lock files, auto-generated types)
 - Vendor / third-party code
 - Formatting-only changes (the formatter owns these)
+
+## Dispatch
+
+The reviewer must not share the author's context. A session that wrote the
+diff grades its own plan, not the code, and a long build transcript dilutes
+the stance above. So "Review" never runs in the calling session. It runs in
+fresh subagents: three lanes in parallel, then one judge ("Judge" below).
+The calling session is the orchestrator. It resolves scope and criteria
+paths, spawns, collects, and formats. It adds, drops, and regrades nothing.
+
+**Mechanics.** Use the Agent tool with `subagent_type: general-purpose`,
+never `fork` — a fork inherits the conversation and defeats the isolation.
+Launch all three lanes in one message so they run concurrently. Each lane
+gets the same brief with its own row from the table below.
+
+No Agent tool in the session → run the three lanes inline, in order, then
+the judge inline, and print
+`Reviewers: in-session (no Agent tool) — reviewer shared the author's context`
+in the output. Never fall back silently.
+
+### Lanes
+
+| Lane | Categories | Distrust passes |
+|------|------------|-----------------|
+| A — trust boundaries | Security | 2 Auth missing/bypassed · 3 Hardcoded secrets · 6 Missing input validation |
+| B — behaviour | Logic · Performance · Testing | 1 Tests weakened |
+| C — hygiene | Maintainability | 4 Dead "compat" code · 5 Scope smuggling · 7 Comment rot |
+
+Every lane also runs the always-flag scan; the judge dedups the overlap.
+Together the lanes cover all five categories and all seven passes. A lane
+that returns without a `Checked:` line for each of its passes is re-run.
+
+### Lane brief
+
+Fill every `<…>` and send it verbatim as the subagent prompt:
+
+```text
+You are one lane of an adversarial code review. Fresh eyes: you have not
+seen this change before, and you owe its author nothing.
+
+Repo: <absolute path to the checkout or worktree>
+Scope: <exact git diff command with pinned SHAs, e.g. git diff <BASE_SHA>...<HEAD_SHA>>
+Purpose: <one line — PR title, or "no stated purpose (working tree)">
+Core: <absolute path to review-core.md>
+Criteria: REVIEW.md <path or "absent"> · CLAUDE.md <paths or "none"> · stack checklist <path or "none">
+
+1. Read the "Load criteria", "Review", "Standard criteria fallback" and
+   "Skip" sections of Core. Adopt the stance in "Review" in full.
+2. Run "Load criteria" against Repo and Scope.
+3. Your lane: <lane letter — categories and numbered distrust passes, copied
+   from the lane's table row>. Walk the diff through your categories, run
+   the always-flag scan, then run each of your distrust passes, stating what
+   you checked. Do not review outside your lane.
+4. Return only this, nothing else:
+
+   Checked: <pass or scan name> — <finding count, or "none found">
+   (one line per assigned distrust pass, plus one for the always-flag scan)
+
+   Finding
+   severity: <per REVIEW.md, else Core's standard levels>
+   location: <file:line — a line present in the diff>
+   category: <one of the five> / <distrust pass name, or "-">
+   failure: <named concrete failure mode>
+   evidence: <the offending line(s), quoted>
+   fix: <one or two lines>
+
+   (repeat per finding; zero findings → the Checked lines only)
+
+Do not modify files. Do not run formatters, linters, or tests. Do not post
+anywhere.
+```
+
+## Judge
+
+One more fresh subagent (`general-purpose`, never `fork`), launched after
+every lane has returned and — in `inquest` — after Codex has been collected.
+It receives the lane outputs verbatim, any external pass output verbatim
+(Codex), and the same `Repo` / `Scope` / `Purpose` / `Core` / `Criteria`
+header as the lane brief. The judge:
+
+1. **Dedups.** Same `location` within ±5 lines and the same failure mode →
+   one finding. Keep the strictest severity, list every source.
+2. **Verifies.** Reads the code at every location. A finding it cannot
+   confirm against the tree is dropped, with the reason — never silently.
+   External-pass-only findings get this pass too.
+3. **Grades.** Applies REVIEW.md severities, else the standard levels.
+   Downgrades any finding without a named failure mode to Suggestion.
+4. **Scores.** Runs "Score".
+
+### Judge brief
+
+```text
+You are the judge of an adversarial code review. Three review lanes and
+possibly an external pass have reported. You have not seen this change
+before.
+
+Repo / Scope / Purpose / Core / Criteria: <as in the lane brief>
+
+Lane reports (verbatim):
+<lane A> <lane B> <lane C>
+External pass: <Codex output verbatim, or "none">
+
+1. Read the "Review", "Score" and "Standard criteria fallback" sections of
+   Core, and REVIEW.md when present.
+2. Dedup: same location within ±5 lines and the same failure mode → one
+   finding, strictest severity, every source listed.
+3. Verify every remaining finding against the code in Repo. Drop what you
+   cannot confirm, and say why. Downgrade findings without a named failure
+   mode to Suggestion.
+4. Score per "Score" (REVIEW.md rubric when present).
+5. Return only this:
+
+   Findings — each in the lane `Finding` shape plus
+   `sources: <lanes and/or external, e.g. A, C, codex>`
+   Dropped — `location — reason` per dropped finding
+   Passes — the seven distrust passes, each with its lane and finding count
+   Score: N/10 — <deductions itemised>
+
+Do not modify files. Do not post anywhere.
+```
+
+The judge's findings and score are final. The orchestrator formats them,
+adds PR hygiene, and (in `inquest`) matches them against existing GitHub
+threads before posting — and changes no severity, no score, drops nothing,
+adds nothing. It may append `Orchestrator note:` under a finding when it
+holds evidence the judge lacked; the finding and the score still stand.
 
 ## Score
 

@@ -12,6 +12,11 @@ adversarial pass, scoring, fallback rubric) and `bench` (worktree lifecycle)
 — follow those verbatim where referenced; do not duplicate them. PR mode
 writes to GitHub. Local mode prints to the terminal only.
 
+The review itself never runs in this session. This session orchestrates:
+it dispatches three review lanes as fresh subagents, collects Codex, hands
+everything to a fresh judge, and posts what the judge returns. It adds,
+drops, and regrades nothing.
+
 Command mechanics live in `reference.md` next to this file (§1–§8). Read the
 section when a phase points at it. That file and `check-sticky.sh` sit
 beside this one; the review core ships with `scrutiny`:
@@ -46,12 +51,15 @@ drop items. Never start a Phase 8 write while an earlier item is open.
 1. Phase 1 — mode + scope stated in one line
 2. Phase 2 — Codex launched in the background (availability output + head
    guard pasted), or a verbatim skip reason recorded
-3. Phase 3 — criteria loaded (REVIEW.md / CLAUDE.md / stack / diff)
+3. Phase 3 — criteria paths resolved + lanes A, B, C dispatched as fresh
+   subagents (or the in-session fallback reason recorded)
 4. Phase 4 — prior threads + CI pulled (PR mode)
-5. Phase 5 — adversarial pass + all seven distrust passes
+5. Phase 5 — all three lanes returned; `Checked:` lines cover all seven
+   distrust passes
 6. Phase 6 — Codex result collected at the PR head SHA, or the recorded
    reason confirmed
-7. Phase 7 — score computed on 0–10
+7. Phase 7 — judge returned: merged findings + score on 0–10, adopted
+   unchanged
 8. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
    `OK`
 9. Phase 8 — pre-post gate: every item confirmed by running its command
@@ -72,6 +80,8 @@ pressure, "probably", or "the user is waiting".
 | Post before the gate | Every Phase 8 gate item passes first, confirmed by running its command — not by judging it "obviously fine". |
 | Post without user confirmation | Ask the user before any PR write. No question tool in the session → print the payloads and stop; do not post. |
 | Finding without a failure mode | Name the concrete failure or downgrade to Suggestion. |
+| Review in the calling session ("small diff", "faster inline") | The lanes and the judge run as fresh `general-purpose` subagents, never `fork`. No Agent tool → inline fallback per `$CORE` "Dispatch", stated in the sticky. A session that wrote the diff grades its plan, not the code. |
+| Orchestrator edits the judge's output | Findings, severities and score come from the judge and are posted unchanged. Disagree → `Orchestrator note:` under the finding. Never drop, add, or regrade. |
 | Dedup against own output | Own sticky (marker) is never a finding — update it. Own open inline threads must be matched so re-runs do not re-post them. |
 | REVIEW.md reshapes output or process | REVIEW.md governs criteria only: severity, always-flag, scoring, skip list. This skill owns process and output. Always review the full PR diff. `sticky-template.md` is the only sticky shape — no "Files Reviewed" tables, no emoji verdicts, no imported formats, even when REVIEW.md says "required". |
 | "Dry run, so gates don't matter" | `--dry-run` skips writes only. Every phase, todo, and gate still runs. |
@@ -165,17 +175,23 @@ under Phases 3–5 instead of blocking after them.
    ```
    Do not wait. Continue to Phase 3.
 
-## Phase 3 — Load criteria
+## Phase 3 — Criteria paths + dispatch
 
-Run "Load criteria" in `$CORE`. Read in parallel:
-REVIEW.md, the CLAUDE.md chain, the stack checklist
-(`.claude/skills/code-review/stacks/<stack>.md` if present), and the diff with
-enough surrounding context per file.
+Resolve the inputs of "Load criteria" in `$CORE` without running it: which
+of REVIEW.md, the CLAUDE.md chain and the stack checklist
+(`.claude/skills/code-review/stacks/<stack>.md`) exist, plus `HEAD_SHA`,
+`BASE_SHA` and the PR title for the brief. Do not read the diff beyond
+`--stat` — the lanes read it.
 
-**REVIEW.md is criteria only**, applied verbatim — scope per the
-Non-negotiables row. REVIEW.md absent → `$CORE` "Standard criteria
-fallback" and its "Always flag" list. Never invent rules not grounded
-in REVIEW.md, CLAUDE.md, the stack checklist, or the visible code.
+Then run "Dispatch" in `$CORE`: fill the lane brief with the worktree path,
+`git diff <BASE_SHA>...<HEAD_SHA>`, the PR title, the absolute `$CORE` path
+and the criteria paths; launch lanes A, B and C in one message as fresh
+`general-purpose` subagents, never `fork`. Do not wait — continue to
+Phase 4 while they run beside Codex.
+
+**REVIEW.md is criteria only**, applied verbatim by the lanes and the
+judge — scope per the Non-negotiables row. REVIEW.md absent → `$CORE`
+"Standard criteria fallback" and its "Always flag" list.
 
 ## Phase 4 — Prior review state + CI (PR mode only)
 
@@ -187,30 +203,33 @@ included): existing reviews + issue comments, inline review comments
 - **Dedup before posting, two signals.** Structural: same `path` within ±5
   lines. Semantic: same failure mode in the body. Both match → no new thread;
   reply via `in_reply_to_id` or stay silent. Bot SUMMARY tables (no anchor)
-  get the semantic pass only.
+  get the semantic pass only. This dedup decides where a judge finding
+  posts, never whether it counts — it stays in the sticky and the score.
 - **Own output.** Own sticky (marker `<!-- inquest:sticky -->`) → update in
   place, never a finding. Own open inline threads (`user.login == $ME`) →
   match by path/window/failure-mode: still open → reply or stay silent; fixed
   → optionally resolve; no match → genuinely new thread.
 - **Distrust resolved threads.** Resolution is a claim — verify the code. An
   author dismissing a valid finding is itself a finding.
-- **Score only what you independently confirm.** A bot's word alone never
-  moves the score.
+- **Score only what the judge confirms.** A bot's word alone never moves
+  the score; prior bot findings reach the judge as external input, not as
+  findings.
 - **CI feeds the verdict.** A failing check on the reviewed head blocks a
   clean approve. Required-status is not knowable read-only — assume a failing
   check is merge-blocking unless it is a known false positive, and state the
   assumption in the sticky.
 
-## Phase 5 — Adversarial review
+## Phase 5 — Collect the lanes
 
-Run "Review" in `$CORE` — read that section now and run
-it verbatim: the stance, the five categories, the always-flag scan from
-Phase 3, and all seven distrust passes, every one, every time, stating what
-you checked. Every finding carries: severity tag, in-diff `file:line`,
-concrete fix, named failure mode. Skip generated files, vendor code,
-formatting-only changes unless REVIEW.md says otherwise.
+Wait for lanes A, B and C. Check each report: a `Checked:` line per
+assigned distrust pass plus the always-flag scan, and every finding in the
+`Finding` shape with a `location` inside the diff. A lane missing a
+`Checked:` line is re-run with the same brief. Together the three reports
+must name all seven passes. Keep the reports verbatim for the judge; do not
+summarise, filter, or grade them here. "Review" in `$CORE` runs only inside
+the lanes and the judge.
 
-## Phase 6 — Codex results (collect + merge)
+## Phase 6 — Codex results (collect)
 
 Collect the Phase 2 launch now: not finished after Phase 5 → wait
 here (poll the output file), never abandon it. Parse the tail — the last
@@ -220,15 +239,21 @@ restore. If the launch was skipped, confirm the recorded verbatim
 reason — a silent skip is FORBIDDEN. Never report a wrong-HEAD run as a real
 pass.
 
-Merge rules: both passes agree → high confidence, keep. Codex-only → verify
-against the code before adopting; drop if unconfirmed. Primary-only → keep.
-Label each finding `(both)` / `(primary)` / `(codex)`.
+Do not merge here. The Codex findings go to the judge verbatim as the
+external pass.
 
-## Phase 7 — Score
+## Phase 7 — Judge
 
-REVIEW.md rubric when present, else `$CORE` "Score": start at 10;
-Critical −3..−5, Warning −1..−2, missing tests −1; floor 1. Non-0–10 rubric →
-normalize to 0–10 before comparing. Approve threshold is 9. Score honestly.
+Run "Judge" in `$CORE`: one fresh `general-purpose` subagent with the three
+lane reports, the Codex output (or the recorded skip reason), and the same
+header as the lane brief. The judge dedups, verifies every finding against
+the tree, drops what it cannot confirm with a reason, and scores per
+REVIEW.md, else `$CORE` "Score" (start at 10; Critical −3..−5, Warning
+−1..−2, missing tests −1; floor 1). Non-0–10 rubric → normalize to 0–10
+before comparing. Approve threshold is 9.
+
+Map `sources` to the sticky label: lanes and Codex → `(both)`; lanes only →
+`(primary)`; Codex only → `(codex)`. Adopt findings and score unchanged.
 
 ## Phase 8 — Output and side effects
 
@@ -247,7 +272,8 @@ failure → STOP, report, fix. No write call until all pass:
 4. `$ME` and `$PR_AUTHOR` resolved; if equal, Rule 0 applied.
 5. Under `--dry-run`: zero writes so far.
 6. Every finding: severity, in-diff `file:line`, concrete fix, failure mode;
-   dedup ran.
+   dedup ran. Findings and score are the judge's, unchanged — or carry an
+   `Orchestrator note:`.
 7. `check-sticky.sh` printed `OK`:
    ```bash
    bash "$SKILL_DIR/check-sticky.sh" sticky.md
@@ -317,8 +343,9 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   which prior findings are now fixed.
 - Findings: one line each — `- [Severity] \`file:line\` — failure mode + fix
   direction. (source)`. Never restate the inline thread body.
-- One sentence for the cleared passes ("Both passes ran; prior threads
-  verified, not re-raised."). Security or hygiene get a sentence ONLY when
+- One sentence for the cleared passes ("Three lanes, Codex and the judge
+  ran in fresh sessions; prior threads verified, not re-raised."). The
+  in-session fallback from `$CORE` "Dispatch" is named here when it fired. Security or hygiene get a sentence ONLY when
   something failed or deserves note — no pass/fail tables, no empty sections,
   no boilerplate.
 - Footer: `Head`/`Base` line, `Codex:` + `CI:` line, `Verdict:` line — exact

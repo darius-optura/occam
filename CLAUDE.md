@@ -146,12 +146,20 @@ Renaming a heading there breaks a caller with no error. The load-bearing
 headings:
 
 ```
-Scope resolution · Load criteria · Review · Score
-PR hygiene · Standard criteria fallback
+Scope resolution · Load criteria · Review · Dispatch · Judge
+Score · PR hygiene · Standard criteria fallback
 ```
 
 The three skills ship together for this reason. `inquest` alone is
 incomplete.
+
+**The review never runs in the calling session.** "Dispatch" sends three
+lanes to fresh `general-purpose` subagents and "Judge" merges and scores in
+a fourth; the calling session only orchestrates. A session that wrote the
+diff grades its own plan, so `fork` is forbidden and the orchestrator may
+not add, drop, or regrade a finding. The lanes together must own all seven
+distrust passes and all five categories; the invariants test checks the
+lane table. No Agent tool → the loud inline fallback, never a silent one.
 
 ## Before you release
 
