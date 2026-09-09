@@ -2,9 +2,11 @@
 
 Occam's razor for Claude Code: fewest words, fewest lines, fewest assumptions.
 
-Two halves of one idea. `razor` makes Claude write the fewest words and the
+Three parts of one idea. `razor` makes Claude write the fewest words and the
 fewest lines that still work. `scrutiny` and `inquest` ask whether your diff
-is the simplest correct one, and score merge confidence out of 10.
+is the simplest correct one, and score merge confidence out of 10. `proof`
+records the feature working in a real browser, so the PR carries evidence,
+not a description.
 
 ## Install
 
@@ -29,6 +31,16 @@ work. The same holds for the other four.
 `inquest` reads named sections of `scrutiny` rather than duplicating them, and
 delegates worktree lifecycle to `bench`. The three ship together for that
 reason; `inquest` on its own is incomplete.
+
+## The review never runs in your session
+
+A session that wrote the diff grades its own plan, not the code. So `scrutiny`
+and `inquest` send the review to fresh subagents: three lanes in parallel
+(trust boundaries, behaviour, hygiene) that together cover the five review
+categories and all seven distrust passes, then a judge that dedups, verifies
+every finding against the tree, and scores. The calling session only
+orchestrates. It adds, drops, and regrades nothing. In `inquest` the lanes run
+beside Codex, and the judge merges both.
 
 ## Razor is off by default
 
@@ -81,24 +93,73 @@ written from its documentation and is marked unverified in the skill.
 
 ## proof records the feature, you stay off the mouse
 
+Claude starts your dev server, logs in as a real user, drives a headed Chrome
+through the change, and writes an mp4. There is no script to maintain. The
+walk is planned from the diff, the PR body, and the repo's own docs, and you
+approve the plan before anything runs.
+
 ```bash
 /proof --setup                  # once per machine: agent-browser, Chrome for Testing
 /proof --init                   # once per repo: writes .claude/proof.json, prints auth save lines
 /proof 3704                     # walk PR 3704 and record it
+/proof                          # same for the current branch
 /proof requester requests approval; approver denies; requester re-requests; approver approves
 /proof 3704 --loom              # same, then upload to Loom and print the share link
 ```
 
-The walk is planned from the diff, the PR body and the repo's own docs. A
-story outline names a scenario the video must cover; its actors map to the
-users in `.claude/proof.json`, and each switch is signed out and logged back
-in on camera. Passwords never pass through Claude: each user is an
-`agent-browser auth save … --password-stdin` profile created in your own
-terminal. Needs `ffmpeg` on `PATH`.
+### What a run does
+
+1. **Preflight.** Checks `agent-browser`, `ffmpeg`, the repo config, and that
+   every user has a saved auth profile. Stops before anything starts if not.
+2. **Plan.** Reads the diff and maps changed routes and components to URLs and
+   click paths. Prints 5 to 12 chapters, one line each, and asks you: record
+   as planned, edit the plan as free text, or stop. Nothing runs until you
+   pick record.
+3. **Server.** Starts `serverCommand` unless the port is already listening,
+   and waits for `readyPath` to answer 200. A server it started, it stops at
+   the end. One it found running, it leaves alone.
+4. **Login, off camera.** Opens Chrome, sizes it to 1440×900, logs in through
+   the first user's auth profile. Recording starts after that.
+5. **Walk.** One chapter at a time: a chapter card, then hover, click, fill.
+   A pointer dot shows where the mouse is. A "Switch to <user>" chapter signs
+   out on camera, logs the next user in off camera, and carries on. A chapter
+   the branch cannot reach is skipped and listed under `gaps`.
+6. **Trim.** Agent think time between actions is what makes a raw take long.
+   Every still span is cut to its first `stillKeep` seconds, so each distinct
+   screen still shows.
+7. **Report.** The mp4 lands in `videoOutDir`. You commit it; the skill never
+   does. The report is six lines: path, duration, chapters done of planned,
+   gaps, whether the server was reused or started and stopped, seconds
+   trimmed, and with `--loom` the share link.
+
+A story outline names one scenario the video must cover, in order, with named
+actors. Actors map to the `role` of each user in `.claude/proof.json`, and the
+skill fits the story inside the diff-derived walk.
+
+### Rules the skill keeps
+
+- Passwords never pass through Claude. Each user is an
+  `agent-browser auth save … --password-stdin` profile created in your own
+  terminal. The skill only ever runs `auth login <profile>`.
+- One tab for the whole walk. A second tab is not on the recording.
+- No red debugging outlines. The pointer dot is the only marker.
+- Only data the feature itself creates. No fixtures, no cleanup writes.
+- The video and `.claude/proof.json` are never staged. You commit them.
+
+### Loom
 
 `--loom` uploads the finished mp4 through Loom's web UI, since Loom has no
-upload API. `--init` writes a `loom.profile` directory and prints a one-time
-login command for it; the upload is best-effort and never fails the recording.
+upload API. Your everyday Chrome profile cannot be reused: its cookies are
+bound to the Chrome binary, and Chrome for Testing cannot read them. So
+`--init` writes a dedicated profile directory as `loom.profile` and prints a
+one-time command that opens a headed window on the Loom login. Sign in there
+once, with Google or Atlassian; the profile keeps the session. On a run,
+preflight checks that login before recording starts. Logged out → it asks
+whether to log in now or skip. The upload happens after the server is torn
+down, in its own browser session, and a failure never fails the recording. It
+becomes `loom: skipped — <reason>` in the report.
+
+### Config
 
 A filled `.claude/proof.json`, for a repo whose dev server picks its own port:
 
@@ -123,11 +184,17 @@ A filled `.claude/proof.json`, for a repo whose dev server picks its own port:
 
 `port` is a fixed number, or `null` with `portCommand` plus a `portRegex` that
 captures it. `readyPath` must answer 200 once the server is up. `logoutPath`
-is optional. `stillKeep` is the seconds each still screen keeps after
-trimming; `0` disables. Each user's `profile` is an `agent-browser auth save`
-name; `role` is what a story outline calls that actor. `loom` is optional.
+is optional; without it the skill signs out through the user menu.
+`stillKeep` is the seconds each still screen keeps after trimming; `0`
+disables. Each user's `profile` is an `agent-browser auth save` name; `role`
+is what a story outline calls that actor. `loom` is optional. `--init` writes
+this file for you; it asks each question once and derives the profile names.
 
-## Optional dependency
+## Optional dependencies
+
+`proof` needs `agent-browser` and Chrome for Testing, which `/proof --setup`
+installs, and `ffmpeg` on `PATH`, which it does not. `--loom` needs a Loom
+plan that allows uploads.
 
 `inquest` runs a second opinion through the Codex companion when the `codex`
 CLI and the openai-codex plugin are both present. When either is missing it
