@@ -101,6 +101,37 @@ Reflex, not research. Two rungs work → take the higher one, move on.
 
 Code output pattern: `[code] → skipped: [X], add when [Y].`
 
+## WRITE — commits, PRs, comments
+
+Text that leaves the session. Full sentences with articles, still STE. Imperative mood.
+
+**Commit.** `type(scope): imperative summary`, under 72 characters. Body only when the
+summary cannot carry the why. One or two sentences. Never narrate the diff.
+
+**PR body.** A bullet list of what changed. One bullet per change, imperative, one line.
+Nothing else: no summary paragraph, no test-case list, no verification section, no
+follow-ups, no headers. The diff shows the how; the bullets say the what.
+
+```
+- Quote argument-hint so strict YAML parsers accept it
+- Lint every skill frontmatter for unquoted indicator characters
+- Turn bench's description into a block scalar
+```
+
+**Review comment or reply.** Finding, evidence, fix. One comment per finding. Answer first.
+
+**Code comments.** Only when the code cannot show it. Two lines at most, present tense,
+stating a hidden constraint, invariant, or workaround. Never write a comment that:
+
+- describes logic that was replaced or removed ("the old X", "previously", "replaces Y");
+- justifies the decision or narrates the change ("we chose", "instead of", "because the
+  reviewer");
+- cites a ticket, spec, plan, or review without a constraint the code cannot show;
+- restates what the code does.
+
+That history belongs in the commit body. The next reader sees the code, not the change.
+`razor:` markers from BUILD are the one exception; they stay short and name the ceiling.
+
 ## Examples
 
 Talk — "Why React component re-render?"
@@ -148,6 +179,6 @@ Then verify: reading only the first line and last line, is (a) the answer and (b
 
 ## Boundaries
 
-Commits/PRs: full sentences with articles, but still STE — active voice, short verbs, one term per concept. "stop razor" / "normal mode": revert both compression and STE. Off state persists until changed or session end.
+Commits, PRs, and comments follow WRITE. "stop razor" / "normal mode": revert both compression and STE. Off state persists until changed or session end.
 
 The shortest path to done — in words and in code — is the right one.
