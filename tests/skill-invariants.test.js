@@ -121,6 +121,21 @@ test('the sticky marker lives in its four files', () => {
   }
 });
 
+test('inquest --manual-codex has its prompt file and a head guard', () => {
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  assert.ok(skill.includes('`--manual-codex`'), 'inquest lost the --manual-codex flag');
+  assert.ok(skill.includes('codex-manual-prompt.md'), 'inquest no longer points at the prompt file');
+  const prompt = read('skills', 'inquest', 'codex-manual-prompt.md');
+  for (const ph of ['<OWNER/REPO>', '<N>', '<BASE_SHA>', '<HEAD_SHA>']) {
+    assert.ok(prompt.includes(ph), `prompt lost placeholder ${ph}`);
+  }
+  // the pasted output is head-guarded by this line; without it a stale review posts as a pass.
+  assert.ok(prompt.includes('Reviewed HEAD:'), 'prompt no longer asks for the reviewed HEAD');
+  assert.ok(skill.includes('`Reviewed HEAD:`'), 'inquest no longer checks the reviewed HEAD');
+  assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('pasted from chat at'),
+    'sticky template lost the pasted-from-chat Codex value');
+});
+
 test('bench keeps its backend contract', () => {
   const bench = read('skills', 'bench', 'SKILL.md');
   // hw is probed before the bare managers — it bootstraps deps/db on top.
@@ -187,6 +202,27 @@ test('proof keeps the fixes from the first acceptance run', () => {
   const tail = skill.slice(skill.indexOf('### 7'));
   assert.match(tail, /proof_concat && proof_trim_stills "\$MP4_OUT" && proof_move_video/, 'trim step lost or misordered');
   assert.ok(tail.includes('trimmed: <s removed'), 'report lost the trimmed line');
+});
+
+test('proof --loom is wired end to end and stays best-effort', () => {
+  const skill = read('skills', 'proof', 'SKILL.md');
+  const helper = read('skills', 'proof', 'proof.sh');
+  assert.ok(skill.split('---')[1].includes('--loom'), 'frontmatter lost --loom');
+  for (const fn of ['proof_loom_check', 'proof_loom_wait_login', 'proof_loom_upload']) {
+    assert.ok(helper.includes(`${fn}()`), `proof.sh lost ${fn}`);
+    assert.ok(skill.includes(fn), `SKILL.md never calls ${fn}`);
+  }
+  // the login callback is multi-hop; the wait loop must only read the URL, never open one.
+  const wait = helper.slice(helper.indexOf('proof_loom_wait_login()'), helper.indexOf('proof_loom_upload()'));
+  assert.strictEqual((wait.match(/agent-browser [^\n]*open /g) || []).length, 1, 'wait loop navigates during login');
+  // the upload runs after teardown and never fails the run.
+  const tail = skill.slice(skill.indexOf('### 7'));
+  assert.ok(tail.indexOf('proof_teardown') < tail.indexOf('proof_loom_upload'), 'upload must follow teardown');
+  assert.ok(tail.includes('out=$(proof_loom_upload "$MP4") || proof_set LOOM'), 'upload failure must fall through to a skipped reason');
+  assert.ok(tail.includes('loom: <share URL | skipped'), 'report lost the loom line');
+  // config: loom.profile is optional but validated, and exported for the helpers.
+  assert.ok(helper.includes('"LOOM_PROFILE", loomProfile'), 'proof_config no longer exports LOOM_PROFILE');
+  assert.ok(read('skills', 'proof', 'reference.md').includes('\n## Loom\n'), 'reference lost the Loom section');
 });
 
 test('proof reference carries the headings the skill points at', () => {

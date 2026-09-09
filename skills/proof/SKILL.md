@@ -1,7 +1,7 @@
 ---
 name: proof
-description: Record a proof-of-feature video with agent-browser. `/proof --setup` installs the tooling once per machine; `/proof --init` writes the repo's .claude/proof.json and prints the auth-profile commands; `/proof [pr|branch] [story]` starts the dev server, logs in via auth profiles, walks the change in a recorded Chrome and writes an mp4. Use when asked to "record a proof", "make the PoF video", or "/proof".
-argument-hint: "[--setup | --init | [pr-number | branch] [story outline]]"
+description: Record a proof-of-feature video with agent-browser. `/proof --setup` installs the tooling once per machine; `/proof --init` writes the repo's .claude/proof.json and prints the auth-profile commands; `/proof [pr|branch] [--loom] [story]` starts the dev server, logs in via auth profiles, walks the change in a recorded Chrome and writes an mp4; `--loom` also uploads it to Loom and prints the share link. Use when asked to "record a proof", "make the PoF video", or "/proof".
+argument-hint: "[--setup | --init | [pr-number | branch] [--loom] [story outline]]"
 allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 ---
 
@@ -9,7 +9,7 @@ allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 
 You drive a real Chrome through a feature and record it. No scripts. You decide
 where to go from the diff, the repo's docs, and an optional story outline. Output
-is an mp4 in the repo's `videoOutDir`.
+is an mp4 in the repo's `videoOutDir`, and with `--loom` a Loom share link.
 
 `proof.sh`, `cursor.js` and `reference.md` sit beside this file. Read the named
 section of `reference.md` when a step points at it.
@@ -24,12 +24,14 @@ once in step 0 of the run; `proof_set` persists it for every later block.
 
 ## Inputs
 
-Parse the argument by format, in this order:
+Parse the argument by format, in this order. `--loom` may appear anywhere in a run
+argument; strip it before the rest is parsed.
 
 | Argument | Mode |
 |---|---|
 | `--setup` | machine-level tooling install, idempotent |
 | `--init` | write this repo's `.claude/proof.json` |
+| `--loom` | after the mp4 lands, upload it to Loom and report the share link |
 | leading numeric token | PR run; the rest is the story |
 | leading token that names a git branch | branch run; the rest is the story |
 | anything else, or empty | run against the current branch; the whole text is the story |
@@ -43,6 +45,9 @@ Parse the argument by format, in this order:
   video. The pointer dot from `cursor.js` is the only marker.
 - Create only the data the feature itself creates. No fixtures, no cleanup writes.
 - Never `git add` the video or `.claude/proof.json`. `--init` writes; the developer commits.
+- Loom is best-effort. An upload failure never fails the recording; it becomes a
+  `loom: skipped — <reason>` line. Never navigate the Loom window while the developer
+  logs in: the callback is several hops and any `open` kills it.
 - Login happens before recording starts. Never run `auth login` while a recording runs:
   stop, log in, start the next segment. `proof_concat` joins the segments at the end.
 - If a chapter is unreachable, skip it and report the gap. Do not improvise unrelated clicks.
@@ -78,12 +83,15 @@ Repo level. If `.claude/proof.json` exists: validate with `proof_config`, print 
 2. Ask for the rest in one AskUserQuestion: `serverCommand`, `port` or the
    `portCommand`+`portRegex` pair, `readyPath`, `loginPath`, `logoutPath` (optional),
    `videoOutDir`, `stillKeep` (seconds each still screen keeps, default 4, 0 disables
-   trimming), and users as `role,email` pairs. Derive each `profile` as
-   `proof-<repo>-<role>` where `<repo>` is the basename of the repo root.
+   trimming), users as `role,email` pairs, and **Loom upload** (yes/no). Derive each
+   `profile` as `proof-<repo>-<role>` where `<repo>` is the basename of the repo root.
+   Loom yes → `"loom": {"profile": "~/.config/proof/loom"}`: a dedicated persistent
+   Chrome profile the developer logs into once. Your real Chrome profile cannot be
+   used; its cookies do not decrypt for Chrome for Testing.
 3. Write `.claude/proof.json` with the Write tool, pretty JSON, `port: null` when unused.
    Do not commit.
 4. Print one line per user for the developer to run in their own terminal, then list what
-   exists:
+   exists. When `loom` is set, also print the Loom login command and its rule:
 
 ```bash
 set -e
@@ -92,13 +100,15 @@ node -e '
 const c = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
 const base = c.port ? "http://localhost:" + c.port : "http://localhost:<port>";
 for (const u of c.users) console.log(`agent-browser auth save ${u.profile} --url ${base}${c.loginPath} --username ${u.email} --password-stdin`);
+if (c.loom) console.log(`agent-browser --profile ${c.loom.profile} --headed open https://www.loom.com/login   # log in once in that window, then close it`);
 ' "$ROOT/.claude/proof.json"
 echo "--- existing profiles"
 agent-browser auth list
 ```
 
 `--password-stdin` reads the password from the terminal, so it never enters this
-conversation. Stop after printing.
+conversation. The Loom login is a Google or Atlassian flow in a headed window; the
+profile keeps the session. Stop after printing.
 
 ## Run
 
@@ -123,6 +133,28 @@ echo PREFLIGHT_OK
 
 Any sentinel: name the mode or command that fixes it ("Failure catalogue" in
 `reference.md`) and STOP. Nothing has started yet.
+
+With `--loom`, check the Loom login now, before anything records:
+
+```bash
+. "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"
+proof_set LOOM 1 >/dev/null
+proof_loom_check && agent-browser close || true
+```
+
+`LOOM_OK` → continue. `LOOM_NOT_CONFIGURED` → `proof_set LOOM 'skipped — no loom.profile in proof.json'`,
+continue. `LOOM_LOGIN_REQUIRED` → one AskUserQuestion: **Log in now** (a headed window
+opens on the Loom login; the developer signs in; nothing else touches that window) or
+**Skip the upload**. Log in now →
+
+```bash
+. "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"
+proof_loom_wait_login && agent-browser close
+```
+
+`LOOM_LOGGED_IN` → continue. `LOOM_LOGIN_TIMEOUT`, or Skip →
+`proof_set LOOM 'skipped — not logged in to Loom'`, continue. The recording never
+waits on Loom again.
 
 ### 1. Resolve the change
 
@@ -281,7 +313,15 @@ agent-browser record stop || true
 agent-browser close || true
 proof_concat && proof_trim_stills "$MP4_OUT" && proof_move_video "$MP4_OUT" || echo "no video to move"
 proof_teardown
+. "$HOME/.claude/proof/out/run-current.env"
+if [ "${LOOM:-}" = 1 ] && [ -n "${MP4:-}" ]; then
+  out=$(proof_loom_upload "$MP4") || proof_set LOOM "skipped — $(printf '%s\n' "$out" | grep -E '^LOOM_' | head -1)"
+  printf '%s\n' "$out"
+fi
 ```
+
+The upload runs after teardown, in its own browser session, so a slow Loom never holds
+the dev server. `LOOM_FAILED <why>` → the mp4 is intact; report the reason under `loom:`.
 
 ### Report
 
@@ -294,4 +334,5 @@ chapters: <done>/<planned>
 gaps: <none | list>
 server: <reused | started+stopped>
 trimmed: <s removed | 0s (disabled)>
+loom: <share URL | skipped — <reason> | not requested>
 ```

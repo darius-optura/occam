@@ -110,6 +110,32 @@ sign out through `LOGOUT_PATH` or the user menu, confirm the login page, `record
 `proof_seg_next` names the segments; `proof_concat` joins them with the ffmpeg concat
 demuxer, stream copy, no re-encode.
 
+## Loom
+
+Verified 2026-09-09. Loom has no public API (Atlassian support: "Loom does not offer a
+open API at this time"; REST API is open request LOOM-185). Upload is web UI only, and
+only on Business, Business+ AI or Enterprise plans.
+
+- `--profile Work` (the real Chrome profile) launches but carries no cookies: Chrome
+  encrypts them with a Keychain key bound to the Chrome binary, and Chrome for Testing
+  cannot read it. `--auto-connect` needs Chrome started with `--remote-debugging-port`.
+  Neither is usable. A dedicated persistent profile directory is; the login survives
+  daemon restarts and a killed window.
+- Login is Google or Atlassian ID, several redirect hops. An `open` during the flow
+  kills it. `proof_loom_wait_login` only polls `get url` until it reads
+  `https://www.loom.com/` off `/login`, `/signup`, `/api/auth`.
+- On `/looms/videos` two hidden `input[type=file]` (mp4, mov, webm, wmv, avi, m4v) exist
+  before any menu opens. `upload 'input[type=file]' <mp4>` sets the file; the
+  `>> nth=0` selector form errors with `DOM.describeNode`.
+- The "New video" menu ignores `click @ref` on the button and DOM `.click()` on the
+  button or its wrapper. `find text "New video" click`, a real pointer click at the
+  text, opens it. Same for the menu item and the dialog button.
+- Then `find text "Upload a video" click` opens a dialog "1 file selected" naming the
+  file; `find text "Upload 1 file" click` starts it. The dialog shows `Uploading: N%`;
+  on completion Loom navigates to `https://www.loom.com/share/<id>`. That URL is the
+  share link. The title is the file basename. 11 MB took about 60 s.
+- Snapshot refs go stale between commands; the helper uses text and CSS selectors only.
+
 ## Failure catalogue
 
 Sentinels come from `proof.sh`. Each row names the mode or command that fixes it.
@@ -132,3 +158,8 @@ Sentinels come from `proof.sh`. Each row names the mode or command that fixes it
 | `SEGMENTS_JOINED n -> <path>` | not a failure; n segments became one file | continue to `proof_trim_stills` |
 | `TRIMMED <n>s` | not a failure; still spans cut to `stillKeep` each | continue to `proof_move_video`; report the number |
 | `proof_trim_stills` returns 1 | ffmpeg re-encode failed | the untrimmed mp4 is intact; move it, report `trimmed: failed` |
+| `LOOM_NOT_CONFIGURED` | `--loom` given, no `loom.profile` in proof.json | report `loom: skipped — not configured`; `/proof --init` adds it |
+| `LOOM_LOGIN_REQUIRED <url>` | the Loom profile has no session | ask: log in now (`proof_loom_wait_login`, headed, hands off) or skip; never STOP the run for it |
+| `LOOM_LOGIN_TIMEOUT` | no login within 300 s | `loom: skipped — not logged in to Loom`, continue |
+| `LOOM_FAILED <why>` | UI step missing, plan without upload, or no share page in 600 s | mp4 is intact; report the reason under `loom:` |
+| `LOOM_URL=<url>` | not a failure; upload done | put the URL on the `loom:` report line |

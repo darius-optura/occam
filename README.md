@@ -86,6 +86,7 @@ written from its documentation and is marked unverified in the skill.
 /proof --init                   # once per repo: writes .claude/proof.json, prints auth save lines
 /proof 3704                     # walk PR 3704 and record it
 /proof requester requests approval; approver denies; requester re-requests; approver approves
+/proof 3704 --loom              # same, then upload to Loom and print the share link
 ```
 
 The walk is planned from the diff, the PR body and the repo's own docs. A
@@ -95,12 +96,21 @@ in on camera. Passwords never pass through Claude: each user is an
 `agent-browser auth save … --password-stdin` profile created in your own
 terminal. Needs `ffmpeg` on `PATH`.
 
+`--loom` uploads the finished mp4 through Loom's web UI, since Loom has no
+upload API. `--init` writes a `loom.profile` directory and prints a one-time
+login command for it; the upload is best-effort and never fails the recording.
+
 ## Optional dependency
 
 `inquest` runs a second opinion through the Codex companion when the `codex`
 CLI and the openai-codex plugin are both present. When either is missing it
 records `skipped — codex CLI not installed` on the sticky and carries on. A
 silent skip is treated as a failure.
+
+`/inquest <N> --manual-codex` skips the CLI: it prints the Codex prompt for
+you to run in a Codex chat, keeps reviewing while you do, and takes the
+pasted output as the second opinion. Useful when chat usage is cheaper than
+CLI usage.
 
 
 ## License
