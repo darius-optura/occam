@@ -57,9 +57,38 @@ test('razor-activate finds the skill body where it looks for it', () => {
 
 test('review-core carries every load-bearing heading', () => {
   const core = read('skills', 'scrutiny', 'review-core.md');
-  for (const h of ['## Scope resolution', '## Load criteria', '## Review',
-                   '## Score', '## PR hygiene', '## Standard criteria fallback']) {
+  for (const h of ['## Scope resolution', '## Load criteria', '## Review', '## Dispatch',
+                   '## Judge', '## Score', '## PR hygiene', '## Standard criteria fallback']) {
     assert.ok(core.includes(`\n${h}\n`), `review-core lost heading "${h}"`);
+  }
+});
+
+test('the review runs in fresh subagents, and the lanes cover every pass', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const dispatch = core.slice(core.indexOf('\n## Dispatch\n'), core.indexOf('\n## Score\n'));
+  // a fork inherits the author's context, which is the bias this exists to remove.
+  assert.ok(dispatch.includes('`subagent_type: general-purpose`'), 'Dispatch lost the subagent type');
+  assert.ok(/never `fork`/.test(dispatch), 'Dispatch no longer forbids fork');
+  // the three lanes must still add up to the seven distrust passes and five categories.
+  const lanes = dispatch.slice(dispatch.indexOf('### Lanes'), dispatch.indexOf('### Lane brief'));
+  for (const pass of ['1 Tests weakened', '2 Auth missing/bypassed', '3 Hardcoded secrets',
+                      '4 Dead "compat" code', '5 Scope smuggling', '6 Missing input validation',
+                      '7 Comment rot']) {
+    assert.ok(lanes.includes(pass), `no lane owns distrust pass "${pass}"`);
+  }
+  for (const cat of ['Security', 'Logic', 'Performance', 'Maintainability', 'Testing']) {
+    assert.ok(lanes.includes(cat), `no lane owns category "${cat}"`);
+  }
+  // the silent fallback is the failure mode; the loud one is allowed.
+  assert.ok(dispatch.includes('Reviewers: in-session (no Agent tool)'), 'Dispatch lost the fallback line');
+  // both callers route the review through Dispatch and Judge, and neither runs "Review" itself.
+  for (const caller of ['skills/scrutiny/SKILL.md', 'skills/inquest/SKILL.md']) {
+    const body = read(...caller.split('/'));
+    for (const section of ['Dispatch', 'Judge']) {
+      assert.ok(new RegExp(`"${section}" in \`(?:review-core\\.md|\\$CORE)\``).test(body),
+        `${caller} does not run "${section}"`);
+    }
+    assert.ok(/regrades nothing/.test(body), `${caller} lost the orchestrator rule`);
   }
 });
 

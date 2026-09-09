@@ -4,6 +4,6 @@ tags: [scrutiny, review]
 plugins: [".."]
 runs: 2
 max_turns: 25
-allowed_tools: [Bash, Read, Grep, Glob, TodoWrite]
+allowed_tools: [Bash, Read, Grep, Glob, TodoWrite, Agent]
 ---
 /occam:scrutiny
