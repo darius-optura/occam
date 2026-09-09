@@ -6,6 +6,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.7.0] — 2026-09-09
+
+### Added
+- `proof` trims still spans. Most of a raw take is agent think time between
+  actions, when the page does not move: 436 s of a 594 s recording. After
+  the segments are joined, `proof_trim_stills` runs ffmpeg `freezedetect`,
+  keeps the first `stillKeep` seconds of every still span (default 4, `0`
+  disables) and re-encodes once. Spans are not merged, so every distinct
+  still screen is still shown. The report gains a `trimmed:` line. The
+  sample take went from 594 s to 302 s.
+
 ## [1.6.0] — 2026-09-09
 
 ### Added

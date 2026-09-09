@@ -69,6 +69,21 @@ documents already open; do not use it for the overlay.
   card for 1.2 s. Follow it with `wait 1300` so the card clears before the action.
 - `eval "typeof window.__proofOverlay"` prints `"boolean"` when the script is live.
 
+## Trimming still spans
+
+Measured on the 594 s OPT-3503 take (2026-09-09): 436 s of it was still frames, in 42
+spans of 3 s or more. The waits are agent think time between actions.
+
+- `freezedetect=n=0.003:d=<keep>` reports `freeze_start`/`freeze_end` on stderr. The last
+  span may lack an end; use the file duration. `n` is a noise floor: a caret blink or a
+  pointer twitch stays "frozen"; streaming text and spinners do not.
+- Each span keeps its first `keep` seconds via `select='not(between(t,a,b))*…'` plus
+  `setpts=N/FRAME_RATE/TB`, then one libx264 re-encode. 594 s → 302 s at `keep=4`.
+- Spans are **not** merged. Two spans touching at one timestamp mean the screen changed
+  once and went still again; merging would cut the new screen.
+- `mpdecimate=keep=N` is the one-filter alternative. Any changed frame restarts its
+  counter, so the same take only shrank to 494 s (438 s with loose thresholds).
+
 ## Login via auth profiles
 
 The developer creates one profile per user, once per machine, in their own terminal:
@@ -115,4 +130,6 @@ Sentinels come from `proof.sh`. Each row names the mode or command that fixes it
 | chapter unreachable | UI path does not exist on this branch | skip, continue, list under `gaps` |
 | `MP4_MISSING …` | `record stop` produced nothing, or no segment has data | report, teardown |
 | `record stop` hangs | screencast died, usually `auth login` mid-recording | kill the daemon pid; ffmpeg writes the trailer; join what exists |
-| `SEGMENTS_JOINED n -> <path>` | not a failure; n segments became one file | continue to `proof_move_video` |
+| `SEGMENTS_JOINED n -> <path>` | not a failure; n segments became one file | continue to `proof_trim_stills` |
+| `TRIMMED <n>s` | not a failure; still spans cut to `stillKeep` each | continue to `proof_move_video`; report the number |
+| `proof_trim_stills` returns 1 | ffmpeg re-encode failed | the untrimmed mp4 is intact; move it, report `trimmed: failed` |

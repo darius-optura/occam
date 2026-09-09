@@ -141,6 +141,10 @@ test('proof keeps the fixes from the first acceptance run', () => {
   const plan = skill.slice(skill.indexOf('### 2. Plan'), skill.indexOf('### 3.'));
   assert.ok(plan.includes('AskUserQuestion') && plan.includes('Record as planned'), 'plan gate removed');
   assert.ok(!/Do not ask for approval/.test(plan), 'plan gate contradicted');
+  // still spans are trimmed after the join and before the move; the report says how much.
+  const tail = skill.slice(skill.indexOf('### 7'));
+  assert.match(tail, /proof_concat && proof_trim_stills "\$MP4_OUT" && proof_move_video/, 'trim step lost or misordered');
+  assert.ok(tail.includes('trimmed: <s removed'), 'report lost the trimmed line');
 });
 
 test('proof reference carries the headings the skill points at', () => {
