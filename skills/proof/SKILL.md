@@ -77,7 +77,8 @@ Repo level. If `.claude/proof.json` exists: validate with `proof_config`, print 
    propose it as `loginPath` and `readyPath`. Propose `videoOutDir: "docs/proof"`.
 2. Ask for the rest in one AskUserQuestion: `serverCommand`, `port` or the
    `portCommand`+`portRegex` pair, `readyPath`, `loginPath`, `logoutPath` (optional),
-   `videoOutDir`, and users as `role,email` pairs. Derive each `profile` as
+   `videoOutDir`, `stillKeep` (seconds each still screen keeps, default 4, 0 disables
+   trimming), and users as `role,email` pairs. Derive each `profile` as
    `proof-<repo>-<role>` where `<repo>` is the basename of the repo root.
 3. Write `.claude/proof.json` with the Write tool, pretty JSON, `port: null` when unused.
    Do not commit.
@@ -268,15 +269,17 @@ Same tab throughout.
 
 Unreachable chapter: skip, keep going, record it for `gaps`.
 
-### 7–9. Stop, move, teardown
+### 7–9. Stop, trim, move, teardown
 
-Run this block even if the walk aborted partway.
+Run this block even if the walk aborted partway. `proof_trim_stills` cuts every still
+span down to its first `stillKeep` seconds; agent think time between actions is what
+makes a raw take long. The re-encode takes roughly a tenth of the video's length.
 
 ```bash
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
 agent-browser record stop || true
 agent-browser close || true
-proof_concat && proof_move_video "$MP4_OUT" || echo "no video to move"
+proof_concat && proof_trim_stills "$MP4_OUT" && proof_move_video "$MP4_OUT" || echo "no video to move"
 proof_teardown
 ```
 
@@ -290,4 +293,5 @@ duration: <s>
 chapters: <done>/<planned>
 gaps: <none | list>
 server: <reused | started+stopped>
+trimmed: <s removed | 0s (disabled)>
 ```

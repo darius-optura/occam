@@ -41,13 +41,14 @@ for (const k of ["serverCommand","readyPath","loginPath","videoOutDir","users"])
 if (c.port == null && !(c.portCommand && c.portRegex)) { console.error("CONFIG_MISSING_KEY port or portCommand+portRegex"); process.exit(1); }
 if (!Array.isArray(c.users) || !c.users.length || c.users.some(u => !u.profile || !u.email)) { console.error("CONFIG_MISSING_KEY users[].profile/email"); process.exit(1); }
 if (String(c.videoOutDir).startsWith("/")) { console.error("CONFIG_INVALID videoOutDir must be repo-relative"); process.exit(1); }
+if (c.stillKeep != null && !(Number(c.stillKeep) >= 0)) { console.error("CONFIG_INVALID stillKeep must be a number of seconds, 0 disables"); process.exit(1); }
 const q = v => "'"'"'" + String(v ?? "").replace(/'"'"'/g, "'"'"'\\'"'"''"'"'") + "'"'"'";
 const out = [
   ["REPO_ROOT", process.argv[2]],
   ["SERVER_COMMAND", c.serverCommand], ["PORT_FIXED", c.port ?? ""],
   ["PORT_COMMAND", c.portCommand ?? ""], ["PORT_REGEX", c.portRegex ?? ""],
   ["READY_PATH", c.readyPath], ["LOGIN_PATH", c.loginPath], ["LOGOUT_PATH", c.logoutPath ?? ""],
-  ["VIDEO_OUT_DIR", c.videoOutDir],
+  ["VIDEO_OUT_DIR", c.videoOutDir], ["STILL_KEEP", c.stillKeep ?? 4],
   ["USER_PROFILES", c.users.map(u => u.profile).join(" ")],
   ["USER_EMAILS", c.users.map(u => u.email).join(" ")],
   ["USER_ROLES", c.users.map(u => u.role ?? "").join(" ")],
@@ -131,6 +132,40 @@ proof_concat() { # join the non-empty SEGMENTS into MP4_OUT; a single segment is
     rm -f "$@"
   fi
   echo "SEGMENTS_JOINED $# -> $MP4_OUT"
+}
+
+proof_trim_stills() { # proof_trim_stills <mp4>  — cut every still span down to its first STILL_KEEP seconds
+  # The long parts of a recording are agent think time between actions: the page does not
+  # move. freezedetect finds those spans; each keeps its first STILL_KEEP seconds so every
+  # distinct still screen is still shown. Spans are not merged: a one-frame page swap that
+  # lands on a new still screen must survive. mpdecimate was tried and cuts far less, because
+  # any pointer twitch restarts its counter. STILL_KEEP=0 disables. Re-encodes in place.
+  proof_paths; . "$PROOF_RUN"
+  keep=${STILL_KEEP:-4}
+  [ -s "$1" ] || { echo "MP4_MISSING $1"; return 1; }
+  if [ "$keep" = 0 ]; then proof_set TRIMMED 0 >/dev/null; echo "TRIMMED 0s (disabled)"; return 0; fi
+  dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$1")
+  plan=$(ffmpeg -hide_banner -i "$1" -vf "freezedetect=n=0.003:d=$keep" -map 0:v -f null - 2>&1 \
+    | grep -oE 'freeze_(start|end): [0-9.]+' \
+    | awk -v dur="$dur" -v keep="$keep" '
+      /freeze_start/ { s=$2 }
+      /freeze_end/   { e=$2; n++; S[n]=s; E[n]=e; s="" }
+      END {
+        if (s != "") { n++; S[n]=s; E[n]=dur }
+        for (i = 1; i <= n; i++) {
+          a = S[i] + keep; b = E[i]
+          if (b - a > 0.5) { x = x sprintf("*not(between(t,%.3f,%.3f))", a, b); cut += b - a }
+        }
+        sub(/^\*/, "", x); printf "%s %.0f\n", x, cut
+      }')
+  cut=${plan##* }; expr=${plan% *}
+  if [ -z "$expr" ]; then proof_set TRIMMED 0 >/dev/null; echo "TRIMMED 0s (no stills)"; return 0; fi
+  tmp="${1%.mp4}-trim.mp4"
+  ffmpeg -y -loglevel error -i "$1" -vf "select='$expr',setpts=N/FRAME_RATE/TB" \
+    -c:v libx264 -preset fast -pix_fmt yuv420p -movflags +faststart "$tmp" || { rm -f "$tmp"; return 1; }
+  mv "$tmp" "$1"
+  proof_set TRIMMED "$cut" >/dev/null
+  echo "TRIMMED ${cut}s"
 }
 
 proof_move_video() { # proof_move_video <mp4>  — verify and move into REPO_ROOT/VIDEO_OUT_DIR

@@ -64,6 +64,31 @@ for (const shell of shells) test(`proof_seg_next numbers segments and proof_conc
   assert.ok(!fs.existsSync(seg1) && !fs.existsSync(seg2), 'segments removed after join');
 });
 
+test('proof_trim_stills keeps the first seconds of a still span and honours 0', { skip: !hasFfmpeg && 'ffmpeg not on PATH' }, () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe' }).trim();
+  const dur = f => Number(execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }));
+  // 2 s moving, 8 s still, 2 s moving. Trimmed with keep=2 the still part shrinks to 2 s.
+  const clip = path.join(home, 'clip.mp4');
+  fs.mkdirSync(path.join(home, 'out'), { recursive: true });
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error',
+    '-f', 'lavfi', '-i', 'testsrc=s=64x64:r=10:d=2',
+    '-f', 'lavfi', '-i', 'color=c=red:s=64x64:r=10:d=8',
+    '-f', 'lavfi', '-i', 'testsrc=s=64x64:r=10:d=2',
+    '-filter_complex', '[0][1][2]concat=n=3:v=1:a=0', '-pix_fmt', 'yuv420p', clip], { stdio: 'ignore' });
+  assert.ok(Math.abs(dur(clip) - 12) < 0.5, `synthetic clip is ${dur(clip)} s`);
+
+  run('proof_set STILL_KEEP 2');
+  assert.match(run(`proof_trim_stills "${clip}"`), /^TRIMMED [5-7]s$/m);
+  const after = dur(clip);
+  assert.ok(after > 5 && after < 7, `trimmed clip is ${after} s, expected about 6`);
+
+  run('proof_set STILL_KEEP 0');
+  assert.match(run(`proof_trim_stills "${clip}"`), /TRIMMED 0s \(disabled\)/);
+  assert.ok(Math.abs(dur(clip) - after) < 0.1, 'disabled trim must not touch the file');
+});
+
 test('proof_concat renames a lone segment and fails on none', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
   const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
