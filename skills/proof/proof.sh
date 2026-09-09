@@ -4,6 +4,11 @@
 # something appends it to "$PROOF_HOME/out/run-current.env"; every block sources that file first.
 # PROOF_HOME defaults to ~/.claude/proof and is re-read on every call, so a caller may override
 # it per invocation (the tests do).
+#
+# The Claude Code Bash tool runs zsh, and zsh does not word-split an unquoted $VAR. Every
+# `for x in $LIST` here and in SKILL.md would then loop once over the joined string. Turn
+# sh splitting on when sourced by zsh; a no-op everywhere else.
+if [ -n "${ZSH_VERSION:-}" ]; then setopt shwordsplit; fi
 
 proof_paths() {
   PROOF_HOME=${PROOF_HOME:-"$HOME/.claude/proof"}

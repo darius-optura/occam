@@ -131,6 +131,16 @@ test('proof keeps the fixes from the first acceptance run', () => {
   assert.ok(skill.includes('proof_concat'), 'segments are never joined');
   // highlight is a debugging aid that paints a red outline into the video.
   assert.ok(!/agent-browser highlight @/.test(skill), 'highlight is back in the walk');
+  // the Bash tool is zsh; without shwordsplit every `for x in $LIST` loops once.
+  const helper = read('skills', 'proof', 'proof.sh');
+  assert.ok(helper.includes('setopt shwordsplit'), 'proof.sh lost the zsh word-split guard');
+  const preflight = skill.slice(skill.indexOf('### 0. Preflight'), skill.indexOf('### 1.'));
+  assert.ok(preflight.indexOf('proof.sh') < preflight.indexOf('for p in $USER_PROFILES'),
+    'preflight must source proof.sh before looping over profiles');
+  // the plan is gated on the user before anything starts.
+  const plan = skill.slice(skill.indexOf('### 2. Plan'), skill.indexOf('### 3.'));
+  assert.ok(plan.includes('AskUserQuestion') && plan.includes('Record as planned'), 'plan gate removed');
+  assert.ok(!/Do not ask for approval/.test(plan), 'plan gate contradicted');
 });
 
 test('proof reference carries the headings the skill points at', () => {

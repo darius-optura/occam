@@ -38,11 +38,16 @@ test('proof_config exports quoted env and rejects a missing key', () => {
   assert.throws(run, /CONFIG_MISSING_KEY loginPath/);
 });
 
-const hasFfmpeg = (() => { try { execFileSync('ffmpeg', ['-version'], { stdio: 'ignore' }); return true; } catch { return false; } })();
+const has = (bin, args) => { try { execFileSync(bin, args, { stdio: 'ignore' }); return true; } catch { return false; } };
+const hasFfmpeg = has('ffmpeg', ['-version']);
+// The Claude Code Bash tool is zsh, which does not word-split $VAR unless told to.
+// Every list-walking helper must work there too, so the join test runs under both shells.
+const shells = ['sh', ...(has('zsh', ['-c', 'true']) ? ['zsh'] : [])];
 
-test('proof_seg_next numbers segments and proof_concat joins them', { skip: !hasFfmpeg && 'ffmpeg not on PATH' }, () => {
+for (const shell of shells) test(`proof_seg_next numbers segments and proof_concat joins them (${shell})`,
+  { skip: !hasFfmpeg && 'ffmpeg not on PATH' }, () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
-  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+  const run = cmd => execFileSync(shell, ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
     { encoding: 'utf8', stdio: 'pipe' }).trim();
   run(`proof_set MP4_OUT "${home}/out/x-2026-09-09.mp4"`);
   const seg1 = run('proof_seg_next');

@@ -28,6 +28,10 @@ headed Chrome for Testing. Re-verify before trusting them on another version.
 Learned on the first acceptance run (2026-09-08, intent worktree):
 
 - `auth list` prints to **stderr**. Capture it with `2>&1` or every profile reads as missing.
+- The Claude Code Bash tool is **zsh**. zsh does not word-split an unquoted `$VAR`, so
+  `for p in $USER_PROFILES` ran once over `"proof-x-a proof-x-b"` and matched nothing.
+  `proof.sh` sets `shwordsplit` when sourced by zsh. Source it before any loop over a list.
+  Second acceptance run, 2026-09-09; the first run's "missing profiles" was likely this too.
 - The session name goes into a Unix socket path capped at 103 bytes. `proof-<worktree
   basename>` hit 105 and every `open` failed. The skill hashes the repo root instead.
 - `auth login` during a recording kills the screencast silently. Frames stop, the CLI

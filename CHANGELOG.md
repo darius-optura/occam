@@ -6,6 +6,22 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.6.0] — 2026-09-09
+
+### Added
+- `proof` gates on the plan before it starts anything. The chapters print as
+  a numbered list, then one AskUserQuestion offers **Record as planned**,
+  **Edit the plan** (free text), or **Stop**. Edits are applied, the list is
+  reprinted, and the question repeats until the user says record. No server
+  or browser starts before that answer.
+
+### Fixed
+- `proof` preflight still read every auth profile as missing. The Claude
+  Code Bash tool is zsh, and zsh does not word-split an unquoted `$VAR`, so
+  the profile loop ran once over the joined string. `proof.sh` now sets
+  `shwordsplit` when sourced by zsh. The same fault waited in `proof_concat`
+  for any run with more than one segment; its test now runs under zsh too.
+
 ## [1.5.1] — 2026-09-09
 
 ### Fixed

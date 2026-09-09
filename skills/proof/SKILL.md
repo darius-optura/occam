@@ -50,6 +50,8 @@ Parse the argument by format, in this order:
   `proof_teardown`, then report the reason.
 - Shell state does not persist between Bash calls. Every block after run step 0 starts with
   `. "$HOME/.claude/proof/out/run-current.env"`. Run each fenced block as one Bash call.
+- The Bash tool is zsh, which does not word-split `$VAR`. Source `proof.sh` before any
+  `for x in $LIST`; it turns `shwordsplit` on. Do not diagnose a split failure as IFS.
 
 ## `/proof --setup`
 
@@ -111,7 +113,7 @@ proof_config "$(git rev-parse --show-toplevel)"
 proof_set SKILL_DIR "$SKILL_DIR"
 . "$HOME/.claude/proof/out/run-current.env"
 have=$(agent-browser auth list 2>&1)   # auth list prints to stderr; never drop it
-for p in $USER_PROFILES; do
+for p in $USER_PROFILES; do              # splits because proof.sh set shwordsplit under zsh
   printf '%s\n' "$have" | grep -qF -- "$p" || { echo "PROFILE_MISSING $p"; missing=1; }
 done
 [ -z "$missing" ] || { echo "run the auth save line for each missing profile (see /proof --init)"; exit 1; }
@@ -172,7 +174,21 @@ actors, placed inside the diff-derived walk. Trim other chapters before story be
 Actors map to `USER_ROLES`; each actor change is a "Switch to <email>" chapter.
 
 Produce 5 to 12 chapters. Each has: title, user, path, action, visible proof. Target
-a video under 3 minutes. Print the plan in one short block. Do not ask for approval.
+a video under 3 minutes. Print the plan as a numbered list, one line per chapter:
+
+```
+1. <title> — <user> — <path> — <action> → <visible proof>
+```
+
+Then gate on the user with one AskUserQuestion:
+
+- **Record as planned** (recommended)
+- **Edit the plan** — the user types changes as free text: drop a chapter, add one,
+  reorder, rename an actor, change a path.
+- **Stop** — nothing has started; exit with no report.
+
+Apply the edits, print the revised list, and ask again. Repeat until the user picks
+**Record as planned**. Nothing runs before that answer: no server, no browser.
 
 ### 3. Server
 
