@@ -18,8 +18,9 @@ everything to a fresh judge, and posts what the judge returns. It adds,
 drops, and regrades nothing.
 
 Command mechanics live in `reference.md` next to this file (§1–§8). Read the
-section when a phase points at it. That file and `check-sticky.sh` sit
-beside this one; the review core ships with `scrutiny`:
+section when a phase points at it. That file, `check-sticky.sh` and
+`codex-manual-prompt.md` sit beside this one; the review core ships with
+`scrutiny`:
 
 ```bash
 SKILL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/inquest"
@@ -50,14 +51,15 @@ drop items. Never start a Phase 8 write while an earlier item is open.
 
 1. Phase 1 — mode + scope stated in one line
 2. Phase 2 — Codex launched in the background (availability output + head
-   guard pasted), or a verbatim skip reason recorded
+   guard pasted), or the `--manual-codex` prompt printed, or a verbatim skip
+   reason recorded
 3. Phase 3 — criteria paths resolved + lanes A, B, C dispatched as fresh
    subagents (or the in-session fallback reason recorded)
 4. Phase 4 — prior threads + CI pulled (PR mode)
 5. Phase 5 — all three lanes returned; `Checked:` lines cover all seven
    distrust passes
-6. Phase 6 — Codex result collected at the PR head SHA, or the recorded
-   reason confirmed
+6. Phase 6 — Codex result collected at the PR head SHA (CLI output, or the
+   user's pasted chat output), or the recorded reason confirmed
 7. Phase 7 — judge returned: merged findings + score on 0–10, adopted
    unchanged
 8. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
@@ -74,6 +76,7 @@ pressure, "probably", or "the user is waiting".
 | Shortcut | Rule |
 |----------|------|
 | Skip Codex ("big diff", "hurry", "probably not installed") | Run the availability check and paste its output. Tooling present → launch in the background at Phase 2, collect at Phase 6. |
+| `--manual-codex` but the CLI runs anyway, or the paste is skipped | Under `--manual-codex` the CLI never runs. Print the filled prompt at Phase 2, stop at Phase 6 until the user pastes the output or says `skip`. Never fill in the Codex pass yourself. |
 | Codex on the wrong HEAD | Codex reviews the cwd's HEAD. Run the head guard, paste the `codex-head-guard:` line. Live failure: Codex reviewed `main` on PR #3536. |
 | Freehand sticky | `cp` the template, fill it, `check-sticky.sh` must print `OK`. Memory drifts; format drift broke dedup and automation. |
 | Base SHA from a local ref | Use the PR's `baseRefOid` or the merge-base, never a bare local `origin/<base>` tip. |
@@ -99,6 +102,9 @@ Parse by format, not position:
 - `--archive` — after posting, archive the worktree (`bench --archive`)
   as the final operation. No-op in local mode.
 - `--dry-run` — full review, zero writes, print what would post.
+- `--manual-codex` — do not run the Codex CLI. Print the Codex prompt for
+  the user to run in a Codex chat, then take the pasted output as the
+  external pass at Phase 6. For when chat usage is cheaper than CLI usage.
 
 ## Phase 1 — Context
 
@@ -124,6 +130,20 @@ to resolved SHAs everywhere, never moving ref names.
 
 Codex is the slowest step. Start it as soon as the scope is known, so it runs
 under Phases 3–5 instead of blocking after them.
+
+**`--manual-codex` → skip steps 1–3 below.** Instead:
+
+```bash
+cat "$SKILL_DIR/codex-manual-prompt.md"
+git diff "$BASE_SHA...$HEAD_SHA" > codex-diff.patch   # for a chat without repo access
+```
+
+Fill every `<…>` (`OWNER/REPO`, `N`, `PR_TITLE`, `BASE_BRANCH`, `BASE_SHA`,
+`HEAD_SHA`; local mode → `Target: <repo root> <scope>` and no PR line) and
+print the whole prompt in one fenced block, followed by one line:
+`Paste this into Codex. Attach codex-diff.patch if it replies NO REPO
+ACCESS. Paste its output back when done — the lanes run meanwhile.` Then
+continue to Phase 3. Record `Codex: manual — awaiting paste` for now.
 
 1. **Availability check — always run, paste the output:**
    ```bash
@@ -231,7 +251,19 @@ the lanes and the judge.
 
 ## Phase 6 — Codex results (collect)
 
-Collect the Phase 2 launch now: not finished after Phase 5 → wait
+**`--manual-codex`:** the external pass is the user's pasted Codex output.
+Not pasted yet → print `Waiting for the Codex output. Paste it as your next
+message, or say skip.` and STOP the turn; resume here on the next message
+with every todo still open. Head guard on the paste: the `Reviewed HEAD:`
+line must equal `$HEAD_SHA` → Codex line reads
+`pasted from chat at <HEAD_SHA> — <verdict>` (SHA in backticks, as the
+template shows). Different SHA → `invalid — chat reviewed <sha>, PR head is
+<HEAD_SHA>`, and the findings do not reach the judge. No `Reviewed HEAD:`
+line → `pasted from chat, HEAD unverified — <verdict>`; findings reach the
+judge marked unverified. User says `skip` → `skipped — manual codex declined
+by user`. Then go to Phase 7.
+
+Otherwise collect the Phase 2 launch now: not finished after Phase 5 → wait
 here (poll the output file), never abandon it. Parse the tail — the last
 assistant-message JSON carries `verdict` and `summary`; findings precede it
 (reference.md §4). Phase 2 never detaches, so there is no prior ref to
@@ -263,8 +295,9 @@ Decide the event and build the findings first, then confirm every item. Any
 failure → STOP, report, fix. No write call until all pass:
 
 1. Codex ran at the PR head — `codex-head-guard:` shows `CUR` == `HEAD_SHA`
-   and the sticky's Codex line carries that SHA — or the Codex line states the
-   verbatim skip/invalid reason.
+   and the sticky's Codex line carries that SHA; under `--manual-codex` the
+   pasted `Reviewed HEAD:` equals `HEAD_SHA` — or the Codex line states the
+   verbatim skip/invalid/unverified reason.
 2. Provenance SHAs came from the PR (`headRefOid`/`baseRefOid`/merge-base),
    not a local ref.
 3. `Verdict:` matches the final `event` (Approve↔`APPROVE`, Request

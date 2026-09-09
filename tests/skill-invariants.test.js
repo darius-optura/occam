@@ -121,6 +121,21 @@ test('the sticky marker lives in its four files', () => {
   }
 });
 
+test('inquest --manual-codex has its prompt file and a head guard', () => {
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  assert.ok(skill.includes('`--manual-codex`'), 'inquest lost the --manual-codex flag');
+  assert.ok(skill.includes('codex-manual-prompt.md'), 'inquest no longer points at the prompt file');
+  const prompt = read('skills', 'inquest', 'codex-manual-prompt.md');
+  for (const ph of ['<OWNER/REPO>', '<N>', '<BASE_SHA>', '<HEAD_SHA>']) {
+    assert.ok(prompt.includes(ph), `prompt lost placeholder ${ph}`);
+  }
+  // the pasted output is head-guarded by this line; without it a stale review posts as a pass.
+  assert.ok(prompt.includes('Reviewed HEAD:'), 'prompt no longer asks for the reviewed HEAD');
+  assert.ok(skill.includes('`Reviewed HEAD:`'), 'inquest no longer checks the reviewed HEAD');
+  assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('pasted from chat at'),
+    'sticky template lost the pasted-from-chat Codex value');
+});
+
 test('bench keeps its backend contract', () => {
   const bench = read('skills', 'bench', 'SKILL.md');
   // hw is probed before the bare managers — it bootstraps deps/db on top.

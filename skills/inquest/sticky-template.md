@@ -9,5 +9,5 @@
 <One sentence: passes ran, prior threads verified and not re-raised. Add security or hygiene notes ONLY when something failed or deserves note.>
 
 Head `<HEAD_SHA>` · Base `<BASE_BRANCH>` @ `<BASE_SHA>`
-Codex: <ran at `CODEX_HEAD_SHA` — verdict | skipped — codex CLI not installed | not run — no base ref for this scope | invalid — could not check out the PR head> · CI: <one line: states + blocking checks>
+Codex: <ran at `CODEX_HEAD_SHA` — verdict | pasted from chat at `CODEX_HEAD_SHA` — verdict | skipped — codex CLI not installed | skipped — manual codex declined by user | not run — no base ref for this scope | invalid — could not check out the PR head> · CI: <one line: states + blocking checks>
 Verdict: **<Approve | Request changes | Comment (not approved)>** — <blocking reason, or "no blockers">

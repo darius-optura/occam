@@ -102,6 +102,11 @@ CLI and the openai-codex plugin are both present. When either is missing it
 records `skipped — codex CLI not installed` on the sticky and carries on. A
 silent skip is treated as a failure.
 
+`/inquest <N> --manual-codex` skips the CLI: it prints the Codex prompt for
+you to run in a Codex chat, keeps reviewing while you do, and takes the
+pasted output as the second opinion. Useful when chat usage is cheaper than
+CLI usage.
+
 
 ## License
 
