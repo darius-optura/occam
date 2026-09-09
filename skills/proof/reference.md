@@ -15,7 +15,8 @@ headed Chrome for Testing. Re-verify before trusting them on another version.
 - One tab per recording. A second tab is not captured; the walk stays in one.
 - `snapshot -i` returns interactive elements only, about 1 KB, as `@eN` refs.
 - Actions: `click @eN`, `fill @eN <text>`, `hover <sel|@eN>`, `press <key>`,
-  `wait <selector|ms|"text">`, `get url|title|text`, `eval <js>`, `highlight <sel>`.
+  `wait <selector|ms|"text">`, `get url|title|text`, `eval <js>`. `highlight <sel>` exists
+  but is a debugging aid with a red outline; the skill never calls it.
 - `batch "cmd" "cmd" ...` runs several commands in one CLI call. Use it for
   independent steps; never batch across a navigation you need to snapshot after.
 - CDP `hover` and `click` dispatch real `mousemove` / `mousedown`, which is what the
@@ -42,7 +43,8 @@ Learned on the first acceptance run (2026-09-08, intent worktree):
 Refs are scoped to the snapshot that produced them. The loop for every action:
 
 1. `snapshot -i` and read the refs.
-2. `highlight @eN` on the target, `wait 400`, then `click @eN` or `fill @eN <text>`.
+2. `hover @eN` so the dot moves onto the target, `wait 400`, then `click @eN` or
+   `fill @eN <text>`. Not `highlight`: it paints a red debugging outline into the video.
 3. `wait 700` for pacing. After any navigation, snapshot again before acting.
 
 Match labels loosely. A textbox named `Comment (optional)` does not match `^Comment$`;

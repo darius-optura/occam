@@ -20,6 +20,9 @@ and `.claude-plugin/marketplace.json`.
   daemon. The recording is now one segment per logged-in user: stop on the
   login page, log in, start the next segment; `proof_concat` joins them with
   a stream copy at the end.
+- `proof` no longer calls `agent-browser highlight` before a click. It is a
+  debugging aid and painted a red outline into every video. The pointer moves
+  onto the target with `hover` instead.
 
 ## [1.5.0] — 2026-09-08
 

@@ -39,6 +39,8 @@ Parse the argument by format, in this order:
 - Never type a password. Login only through `agent-browser auth login <profile>`.
   Never ask for, read, or echo a password.
 - One tab for the whole walk. Close any extra tab and note the gap.
+- Never `agent-browser highlight`. It draws a red debugging outline that ends up in the
+  video. The pointer dot from `cursor.js` is the only marker.
 - Create only the data the feature itself creates. No fixtures, no cleanup writes.
 - Never `git add` the video or `.claude/proof.json`. `--init` writes; the developer commits.
 - Login happens before recording starts. Never run `auth login` while a recording runs:
@@ -224,7 +226,7 @@ Per chapter, following "Snapshot and refs" in `reference.md`:
 
 1. `agent-browser eval "window.__proofChapter('<title>')"` then `agent-browser wait 1300`.
 2. `agent-browser snapshot -i`; pick the ref.
-3. `agent-browser highlight @ref`, `wait 400`, then `click @ref` or `fill @ref <text>` or
+3. `agent-browser hover @ref`, `wait 400`, then `click @ref` or `fill @ref <text>` or
    `press <key>`.
 4. `agent-browser wait 700` between actions. Streams: `wait "<end text>"`; without stable
    end text, loop `wait 30000` plus `snapshot -i`, at most four times.

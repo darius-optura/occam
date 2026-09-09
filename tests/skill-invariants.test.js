@@ -129,6 +129,8 @@ test('proof keeps the fixes from the first acceptance run', () => {
   const start = sw.indexOf('agent-browser record start');
   assert.ok(stop > -1 && login > stop && start > login, 'user switch must stop, log in, then start');
   assert.ok(skill.includes('proof_concat'), 'segments are never joined');
+  // highlight is a debugging aid that paints a red outline into the video.
+  assert.ok(!/agent-browser highlight @/.test(skill), 'highlight is back in the walk');
 });
 
 test('proof reference carries the headings the skill points at', () => {
