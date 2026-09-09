@@ -1,6 +1,10 @@
 ---
 name: bench
-description: Provision or archive an isolated git worktree for a GitHub PR, through the hw fish function, Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions; `/bench --archive <N>` archives.
+description: >-
+  Provision or archive an isolated git worktree for a GitHub PR, through the hw fish function,
+  Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in
+  isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions;
+  `/bench --archive <N>` archives.
 ---
 
 # Bench

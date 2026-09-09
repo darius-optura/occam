@@ -25,14 +25,13 @@ headed Chrome for Testing. Re-verify before trusting them on another version.
   after one hour. `close` ends the session cleanly.
 - Per-action cost is 10 to 130 ms; the cost of a run is the page, not the driver.
 
-Learned on the first acceptance run (2026-09-08, intent worktree):
+Learned in real runs:
 
 - `auth list` prints to **stderr**. Capture it with `2>&1` or every profile reads as missing.
 - The Claude Code Bash tool is **zsh**. zsh does not word-split an unquoted `$VAR`, so
   `for p in $USER_PROFILES` ran once over `"proof-x-a proof-x-b"` and matched nothing.
   `proof.sh` sets `shwordsplit` when sourced by zsh. Source it before any loop over a list.
-  Second acceptance run, 2026-09-09; the first run's "missing profiles" was likely this too.
-- The session name goes into a Unix socket path capped at 103 bytes. `proof-<worktree
+- The session name goes into a Unix socket path capped at 103 bytes. `proof-<checkout
   basename>` hit 105 and every `open` failed. The skill hashes the repo root instead.
 - `auth login` during a recording kills the screencast silently. Frames stop, the CLI
   keeps answering, and `record stop` never returns. Plain cross-document navigation does
@@ -71,8 +70,8 @@ documents already open; do not use it for the overlay.
 
 ## Trimming still spans
 
-Measured on the 594 s OPT-3503 take (2026-09-09): 436 s of it was still frames, in 42
-spans of 3 s or more. The waits are agent think time between actions.
+Measured on a 594 s take: 436 s of it was still frames, in 42 spans of 3 s or more.
+The waits are agent think time between actions.
 
 - `freezedetect=n=0.003:d=<keep>` reports `freeze_start`/`freeze_end` on stderr. The last
   span may lack an end; use the file duration. `n` is a noise floor: a caret blink or a

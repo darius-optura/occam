@@ -102,7 +102,7 @@ test('proof_concat renames a lone segment and fails on none', () => {
 });
 
 test('proof_slug is filesystem safe', () => {
-  const out = execFileSync('sh', ['-c', `. "${sh}"; proof_slug "Feat/OPT-3503 re-request flow!"`],
+  const out = execFileSync('sh', ['-c', `. "${sh}"; proof_slug "Feat/ABC-123 re-request flow!"`],
     { encoding: 'utf8' }).trim();
-  assert.strictEqual(out, 'feat-opt-3503-re-request-flow');
+  assert.strictEqual(out, 'feat-abc-123-re-request-flow');
 });
