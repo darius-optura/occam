@@ -6,6 +6,23 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.7.1] — 2026-09-09
+
+### Fixed
+- `proof` frontmatter was not valid YAML. `argument-hint` began with `[`, so
+  a strict parser read it as a flow sequence and failed on the `|`. GitHub
+  showed the error at the top of the rendered skill. The value is now quoted,
+  and an invariant test lints every skill's frontmatter for unquoted values
+  that start with a YAML indicator or contain `: ` or ` #`.
+- The same lint found `bench`'s description cut short at `#N` by a strict
+  YAML parser, since ` #` opens a comment in a plain scalar. It is now a
+  block scalar and parses whole.
+
+### Changed
+- `proof` prose no longer names the repo, tickets, worktrees, or dates of
+  the runs it learned from. `--init` proposes a port command generically
+  instead of one project's script.
+
 ## [1.7.0] — 2026-09-09
 
 ### Added

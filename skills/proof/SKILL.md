@@ -1,7 +1,7 @@
 ---
 name: proof
 description: Record a proof-of-feature video with agent-browser. `/proof --setup` installs the tooling once per machine; `/proof --init` writes the repo's .claude/proof.json and prints the auth-profile commands; `/proof [pr|branch] [story]` starts the dev server, logs in via auth profiles, walks the change in a recorded Chrome and writes an mp4. Use when asked to "record a proof", "make the PoF video", or "/proof".
-argument-hint: [--setup | --init | [pr-number | branch] [story outline]]
+argument-hint: "[--setup | --init | [pr-number | branch] [story outline]]"
 allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 ---
 
@@ -71,10 +71,10 @@ echo "changed:${changed:- nothing}"
 
 Repo level. If `.claude/proof.json` exists: validate with `proof_config`, print it, stop.
 
-1. Detect defaults. Read `package.json` scripts for a dev command. If a `worktree:info`
-   script exists, propose `portCommand: "npm run -s worktree:info"` and
-   `portRegex: "Dev port:[[:space:]]*([0-9]+)"`. Grep `src/routes` for a login route and
-   propose it as `loginPath` and `readyPath`. Propose `videoOutDir: "docs/proof"`.
+1. Detect defaults. Read `package.json` scripts for a dev command. If the dev port is
+   fixed, propose `port`. If a script prints the port, propose it as `portCommand` with
+   a `portRegex` that captures the number. Grep the routes directory for a login route
+   and propose it as `loginPath` and `readyPath`. Propose `videoOutDir: "docs/proof"`.
 2. Ask for the rest in one AskUserQuestion: `serverCommand`, `port` or the
    `portCommand`+`portRegex` pair, `readyPath`, `loginPath`, `logoutPath` (optional),
    `videoOutDir`, `stillKeep` (seconds each still screen keeps, default 4, 0 disables
@@ -209,7 +209,7 @@ set -e
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"
 proof_alive
 # Short and stable per repo root. The session name lands in a Unix socket path, which is
-# capped at 103 bytes; a worktree basename overflows it and every `open` fails.
+# capped at 103 bytes; a long checkout basename overflows it and every `open` fails.
 export AGENT_BROWSER_SESSION="proof-$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"
 proof_set SESSION "$AGENT_BROWSER_SESSION" >/dev/null
 agent-browser --args "--force-device-scale-factor=1" open "$BASE_URL$LOGIN_PATH" --headed --init-script "$SKILL_DIR/cursor.js"

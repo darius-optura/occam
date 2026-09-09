@@ -156,6 +156,27 @@ test('proof reference carries the headings the skill points at', () => {
   }
 });
 
+test('every skill frontmatter is plain YAML a strict parser accepts', () => {
+  // No YAML library here, so lint the shapes that break strict parsers: a plain
+  // scalar may not start with a flow/indicator character, and may not contain ": "
+  // or " #". Block scalars (>, |) and quoted values are fine. GitHub rendered
+  // `argument-hint: [--setup | …]` as a broken flow sequence.
+  const indicator = /^[\[\]{}*&!|>%@`,'"?-]/;
+  for (const dir of fs.readdirSync(path.join(root, 'skills'))) {
+    const skill = read('skills', dir, 'SKILL.md');
+    const fm = skill.split('\n---\n')[0].replace(/^---\n/, '');
+    for (const line of fm.split('\n')) {
+      const m = line.match(/^([\w-]+): (.*)$/);
+      if (!m) continue;
+      const [, key, value] = m;
+      if (/^[>|]/.test(value)) continue;                       // block scalar
+      if (/^"(?:[^"\\]|\\.)*"$/.test(value) || /^'[^']*'$/.test(value)) continue; // quoted
+      assert.ok(!indicator.test(value), `${dir}/SKILL.md ${key}: value starts with a YAML indicator; quote it`);
+      assert.ok(!/: | #/.test(value), `${dir}/SKILL.md ${key}: plain scalar contains ": " or " #"; quote it`);
+    }
+  }
+});
+
 test('the three version fields agree', () => {
   const plugin = JSON.parse(read('.claude-plugin', 'plugin.json'));
   const market = JSON.parse(read('.claude-plugin', 'marketplace.json'));
