@@ -6,6 +6,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.8.0] — 2026-09-09
+
+### Added
+- `razor` gains a WRITE section for text that leaves the session. Commits:
+  imperative summary, body only for the why. PR body: a bullet list of what
+  changed and nothing else. Review comments: finding, evidence, fix. Code
+  comments: two lines at most, present tense, only for what the code cannot
+  show; never describe replaced logic, justify a decision, narrate the
+  change, or cite a ticket without a constraint. Mirrors the comment-rot
+  check in the review core.
+
 ## [1.7.1] — 2026-09-09
 
 ### Fixed
