@@ -96,15 +96,19 @@ PENDING review):
 cat > review.json <<'JSON'
 {
   "event": "REQUEST_CHANGES",
-  "body": "Request changes — three unaudited callsites. Score and detail in the sticky; findings in the inline threads.",
+  "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\nRequest changes — three unaudited callsites. Score and detail in the sticky; findings in the inline threads.",
   "comments": [
     { "path": "src/foo.ts", "line": 42, "side": "RIGHT",
-      "body": "[Warning] <fix> — <named failure mode>" }
+      "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\n[Warning] <fix> — <named failure mode>" }
   ]
 }
 JSON
 gh api --method POST repos/{owner}/{repo}/pulls/<N>/reviews --input review.json
 ```
+
+Every `body` — the review's and each comment's — opens with the on-behalf
+alert from razor WRITE; `<NAME>` is `git config user.name`. The same alert
+opens every reply posted in Phase 8.
 
 Each comment: `path` relative to repo root, `line` present in the diff hunks,
 `side: RIGHT` for added/changed lines. Off-diff finding → fold into the sticky

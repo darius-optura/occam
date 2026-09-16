@@ -22,7 +22,8 @@ test('razor WRITE section keeps its code-comment rules and points at ledger', ()
   const start = razor.indexOf('\n## WRITE');
   assert.ok(start > -1, 'razor lost the WRITE section');
   const write = razor.slice(start, razor.indexOf('\n## ', start + 1));
-  for (const rule of ['ledger', 'Two lines at most', 'was replaced or removed', 'justifies the decision']) {
+  for (const rule of ['ledger', 'Two lines at most', 'was replaced or removed', 'justifies the decision',
+                      '[!NOTE]', 'on behalf of']) {
     assert.ok(write.includes(rule), `WRITE lost the rule "${rule}"`);
   }
   // the code-comment rules mirror review-core's comment-rot check; both must exist.
@@ -140,6 +141,10 @@ test('inquest --manual-codex has its prompt file and a head guard', () => {
   // the pasted output is head-guarded by this line; without it a stale review posts as a pass.
   assert.ok(prompt.includes('Reviewed HEAD:'), 'prompt no longer asks for the reviewed HEAD');
   assert.ok(skill.includes('`Reviewed HEAD:`'), 'inquest no longer checks the reviewed HEAD');
+  assert.strictEqual(read('skills', 'inquest', 'sticky-template.md').split('\n')[1], '> [!NOTE]',
+    'sticky template lost the on-behalf alert on line 2');
+  assert.ok(read('skills', 'inquest', 'check-sticky.sh').includes('on behalf of'),
+    'check-sticky no longer validates the on-behalf alert');
   assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('pasted from chat at'),
     'sticky template lost the pasted-from-chat Codex value');
 });

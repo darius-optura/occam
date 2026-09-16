@@ -43,6 +43,10 @@ every finding against the tree, and scores. The calling session only
 orchestrates. It adds, drops, and regrades nothing. In `inquest` the lanes run
 beside Codex, and the judge merges both.
 
+Everything `inquest` posts goes out under your GitHub login, so every comment
+opens with a `[!NOTE]` alert that reads "Posted by Claude on behalf of
+<your name>". Commits and PR bodies carry no alert; you sign those.
+
 ## Razor is off by default
 
 Installing occam does not compress your output. Turn razor on in one of three

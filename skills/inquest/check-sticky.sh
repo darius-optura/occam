@@ -13,6 +13,10 @@ err() { echo "FAIL: $1"; fail=1; }
 [ "$(head -1 "$f")" = "<!-- inquest:sticky -->" ] \
   || err "marker <!-- inquest:sticky --> is not line 1"
 
+# 1b. The on-behalf alert follows the marker.
+[ "$(sed -n 2p "$f")" = "> [!NOTE]" ] && grep -qE '^> Posted by Claude on behalf of .+\.$' "$f" \
+  || err "lines 2-3 must be the alert: > [!NOTE] / > Posted by Claude on behalf of <name>."
+
 # 2. Required anchors, present and in template order.
 anchors=(
   "### Merge confidence: "
@@ -49,7 +53,7 @@ grep -qE '^Verdict: \*\*(Approve|Request changes|Comment \(not approved\))\*\*' 
 
 # 6. No unfilled template placeholders may remain.
 placeholders=(
-  '<N>' '<HEAD_SHA>' '<BASE_BRANCH>' '<BASE_SHA>' 'CODEX_HEAD_SHA'
+  '<N>' '<NAME>' '<HEAD_SHA>' '<BASE_BRANCH>' '<BASE_SHA>' 'CODEX_HEAD_SHA'
   '<Assessment prose' '<Findings, only when' '<One sentence' '<ran at'
   '<one line' '<Approve | Request changes' '<blocking reason'
 )
