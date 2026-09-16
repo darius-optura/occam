@@ -1,6 +1,6 @@
 ---
 name: ledger
-description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body with the change, the most impactful lines, and the proof scenarios, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
+description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body with the change, the most impactful lines, and the main flows, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
 argument-hint: "[pr [pr-number]]"
 allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
 ---
@@ -186,7 +186,7 @@ when the template has no heading with the same meaning:
 ## Most impactful
 - [`path/file.ext:line`](https://github.com/<owner>/<repo>/pull/<N>/files#diff-<sha256 of path>R<line>) — what the line does now and why it matters.
 
-## Proof scenarios
+## Main flows
 - As <actor>, <action>; expect <result>.
 ```
 
@@ -203,7 +203,7 @@ when the template has no heading with the same meaning:
     perl -pi -e 's{^- `([^`:]+):(\d+)`}{"- [`$1:$2`](https://github.com/'"$REPO"'/pull/'"$1"'/files#diff-".sha256_hex($1)."R$2)"}e; BEGIN{use Digest::SHA qw(sha256_hex)}' "$TMP/body.md"
   }
   ```
-- **Proof scenarios** are two to four bullets in the story shape `proof`
+- **Main flows** are two to four bullets in the story shape `proof`
   reads, so `/proof <N> <bullet>` runs unchanged. Actor names come from the
   `role` fields in `.claude/proof.json` when that file exists, else the role
   name as the app shows it. Cover user-visible behaviour only. When the diff
