@@ -1,6 +1,6 @@
 ---
 name: ledger
-description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body with the change, the most impactful lines, and the main flows, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
+description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, and the main flows, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
 argument-hint: "[pr [pr-number]]"
 allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
 ---
@@ -172,30 +172,38 @@ every one of them, in their order, and fill each as one-line bullets.
 
 ### 3. Body
 
-Every section is a bullet list. Every bullet is one line, imperative mood, a
-full sentence in STE. No prose paragraphs. No headers other than the section
-headings.
+Every block is a bullet list. Every bullet is one line, imperative mood, a
+full sentence in STE. No prose paragraphs. No headings other than the ones
+below.
 
-Three sections are always present. Add each one after the template's sections
+Three blocks are always present. Add each one after the template's sections
 when the template has no heading with the same meaning:
 
 ```
-## What changed
-- One bullet per change, the general description.
+- One bullet per change, the general description. No heading above these.
 
-## Most impactful
+<details>
+<summary>Most impactful</summary>
+
 - [`path/file.ext:line`](https://github.com/<owner>/<repo>/pull/<N>/files#diff-<sha256 of path>R<line>) — what the line does now and why it matters.
+
+</details>
 
 ## Main flows
 - As <actor>, <action>; expect <result>.
 ```
 
-- **What changed** covers every change in the diff, one bullet each.
-- **Most impactful** is ranked, three to five bullets, one `file:line` anchor
-  each, from the diff's post-image line numbers. Each anchor is a link into
-  the PR's diff. GitHub names a file's block `diff-` plus the SHA-256 of its
-  path, and `R<line>` picks the post-image line. Write the body with plain
-  anchors first; step 5 turns them into links once the PR number is known.
+- **The change** opens the body. One bullet per change in the diff, no
+  heading. What changed is the point of the PR; a title above it says
+  nothing.
+- **Most impactful** is collapsed by default; it is technical detail. Keep
+  the blank line after `</summary>` and before `</details>`, or GitHub
+  renders the bullets as plain text. Ranked, three to five bullets, one
+  `file:line` anchor each, from the diff's post-image line numbers. Each
+  anchor is a link into the PR's diff. GitHub names a file's block `diff-`
+  plus the SHA-256 of its path, and `R<line>` picks the post-image line.
+  Write the body with plain anchors first; step 5 turns them into links once
+  the PR number is known.
 
   ```bash
   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)

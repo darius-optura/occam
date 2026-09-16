@@ -24,7 +24,7 @@ claude plugin install occam@occam
 | `inquest` | Adversarial review of a GitHub PR. Inline threads, one sticky summary, approve at ≥9 or request changes. |
 | `bench` | Provisions and archives an isolated worktree for a PR. |
 | `proof` | Records a proof-of-feature mp4 by driving a real Chrome through a PR or branch with agent-browser. |
-| `ledger` | Commits the staged changes with a conventional message, and writes a bullet-only PR body with the change, the most impactful lines, and the main flows. |
+| `ledger` | Commits the staged changes with a conventional message, and writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, and the main flows. |
 
 Claude Code namespaces a plugin's skills, so both `/razor` and `/occam:razor`
 work. The same holds for the other five.
@@ -197,22 +197,26 @@ this file for you; it asks each question once and derives the profile names.
 staged paths and the recent log, and commits at once. Nothing staged means
 nothing happens. `/ledger pr` reads the branch diff against its base and
 writes the PR body; `/ledger pr <N>` rewrites an existing PR from its own
-diff. Every section is a bullet list, imperative, one line per bullet:
+diff. Every block is a bullet list, imperative, one line per bullet. The change
+comes first with no heading; the impactful lines are collapsed by default:
 
 ```
-## What changed
 - Add --loom to upload the finished video through Loom's web UI.
 
-## Most impactful
+<details>
+<summary>Most impactful</summary>
+
 - [`skills/proof/proof.sh:212`](https://github.com/darius-optura/occam/pull/8/files#diff-…R212) — loom_upload retries the hidden file input once.
+
+</details>
 
 ## Main flows
 - As admin, run /proof 8 --loom; expect a Loom share link in the terminal.
 ```
 
 A repo's `PULL_REQUEST_TEMPLATE.md` or `REVIEW.md` sections stay and are
-filled as bullets; the three above are added where a heading with the same
-meaning is missing. Main flows are written in the story shape `proof`
+filled as bullets; the three blocks above are added where a heading with the
+same meaning is missing. Main flows are written in the story shape `proof`
 takes, so `/proof <N> <bullet>` runs unchanged. Every "Most impactful"
 anchor links into the PR's diff at that line. Create runs in two steps for
 that reason: open the PR with plain anchors, then edit the links in once the
