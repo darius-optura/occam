@@ -105,18 +105,8 @@ Code output pattern: `[code] → skipped: [X], add when [Y].`
 
 Text that leaves the session. Full sentences with articles, still STE. Imperative mood.
 
-**Commit.** `type(scope): imperative summary`, under 72 characters. Body only when the
-summary cannot carry the why. One or two sentences. Never narrate the diff.
-
-**PR body.** A bullet list of what changed. One bullet per change, imperative, one line.
-Nothing else: no summary paragraph, no test-case list, no verification section, no
-follow-ups, no headers. The diff shows the how; the bullets say the what.
-
-```
-- Quote argument-hint so strict YAML parsers accept it
-- Lint every skill frontmatter for unquoted indicator characters
-- Turn bench's description into a block scalar
-```
+**Commits and PR bodies** follow `ledger`. Run `/ledger` to commit or `/ledger pr` to write
+the PR; read `${CLAUDE_PLUGIN_ROOT}/skills/ledger/SKILL.md` when you write one by hand.
 
 **Review comment or reply.** Finding, evidence, fix. One comment per finding. Answer first.
 
@@ -179,6 +169,6 @@ Then verify: reading only the first line and last line, is (a) the answer and (b
 
 ## Boundaries
 
-Commits, PRs, and comments follow WRITE. "stop razor" / "normal mode": revert both compression and STE. Off state persists until changed or session end.
+Commits and PR bodies follow `ledger`; review and code comments follow WRITE. "stop razor" / "normal mode": revert both compression and STE. Off state persists until changed or session end.
 
 The shortest path to done — in words and in code — is the right one.
