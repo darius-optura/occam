@@ -39,6 +39,11 @@ even when session `razor` mode is off. Keep exact: code, identifiers, error
 strings, flags, paths, `file:line` anchors, severity tags, score line,
 `Verdict:` line.
 
+Every comment that reaches GitHub — review body, inline thread, reply,
+sticky — opens with the on-behalf alert from the "WRITE" section of the same
+razor file. The sticky template carries it after the marker; `check-sticky.sh`
+rejects a sticky without it.
+
 ## Execution contract — FIRST, before Phase 1
 
 **Violating the letter of these rules is violating their spirit.**

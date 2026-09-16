@@ -110,6 +110,19 @@ the PR; read `${CLAUDE_PLUGIN_ROOT}/skills/ledger/SKILL.md` when you write one b
 
 **Review comment or reply.** Finding, evidence, fix. One comment per finding. Answer first.
 
+**Comments posted on GitHub for the user.** Every comment, reply, review body, or sticky
+that leaves through `gh` goes out under the user's login, so it says who wrote it. Open the
+body with a GitHub alert, then a blank line, then the content:
+
+```
+> [!NOTE]
+> Posted by Claude on behalf of <name>.
+```
+
+`<name>` is `git config user.name`, else `gh api user -q .login`. The alert is the first
+content; in an inquest sticky it follows the marker line. Commits and PR bodies carry no
+alert; `ledger` owns those and the user signs them.
+
 **Code comments.** Only when the code cannot show it. Two lines at most, present tense,
 stating a hidden constraint, invariant, or workaround. Never write a comment that:
 

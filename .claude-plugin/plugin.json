@@ -1,7 +1,7 @@
 {
   "name": "occam",
   "description": "Terse output, adversarial review, honest history. /razor cuts words and code; /scrutiny and /inquest cut bad diffs; /ledger writes the commit and the PR.",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "author": { "name": "Darius Cupsa" },
   "homepage": "https://github.com/darius-optura/occam",
   "repository": "https://github.com/darius-optura/occam",
