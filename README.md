@@ -204,7 +204,7 @@ diff. Every section is a bullet list, imperative, one line per bullet:
 - Add --loom to upload the finished video through Loom's web UI.
 
 ## Most impactful
-- `skills/proof/proof.sh:212` — loom_upload retries the hidden file input once.
+- [`skills/proof/proof.sh:212`](https://github.com/darius-optura/occam/pull/8/files#diff-…R212) — loom_upload retries the hidden file input once.
 
 ## Proof scenarios
 - As admin, run /proof 8 --loom; expect a Loom share link in the terminal.
@@ -213,8 +213,11 @@ diff. Every section is a bullet list, imperative, one line per bullet:
 A repo's `PULL_REQUEST_TEMPLATE.md` or `REVIEW.md` sections stay and are
 filled as bullets; the three above are added where a heading with the same
 meaning is missing. Proof scenarios are written in the story shape `proof`
-takes, so `/proof <N> <bullet>` runs unchanged. The body is printed first and
-nothing reaches GitHub until you pick Create or Edit. Commit messages and PR
+takes, so `/proof <N> <bullet>` runs unchanged. Every "Most impactful"
+anchor links into the PR's diff at that line. Create runs in two steps for
+that reason: open the PR with plain anchors, then edit the links in once the
+number exists. The body is printed first and nothing reaches GitHub until you
+pick Create or Edit. Commit messages and PR
 bodies never carry a generated-with footer or a session link.
 
 ## Optional dependencies

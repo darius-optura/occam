@@ -184,7 +184,7 @@ when the template has no heading with the same meaning:
 - One bullet per change, the general description.
 
 ## Most impactful
-- `path/file.ext:line` — what the line does now and why it matters.
+- [`path/file.ext:line`](https://github.com/<owner>/<repo>/pull/<N>/files#diff-<sha256 of path>R<line>) — what the line does now and why it matters.
 
 ## Proof scenarios
 - As <actor>, <action>; expect <result>.
@@ -192,7 +192,17 @@ when the template has no heading with the same meaning:
 
 - **What changed** covers every change in the diff, one bullet each.
 - **Most impactful** is ranked, three to five bullets, one `file:line` anchor
-  each, from the diff's post-image line numbers.
+  each, from the diff's post-image line numbers. Each anchor is a link into
+  the PR's diff. GitHub names a file's block `diff-` plus the SHA-256 of its
+  path, and `R<line>` picks the post-image line. Write the body with plain
+  anchors first; step 5 turns them into links once the PR number is known.
+
+  ```bash
+  REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
+  link_anchors() {  # $1 = PR number; rewrites `path:line` anchors in body.md into links
+    perl -pi -e 's{^- `([^`:]+):(\d+)`}{"- [`$1:$2`](https://github.com/'"$REPO"'/pull/'"$1"'/files#diff-".sha256_hex($1)."R$2)"}e; BEGIN{use Digest::SHA qw(sha256_hex)}' "$TMP/body.md"
+  }
+  ```
 - **Proof scenarios** are two to four bullets in the story shape `proof`
   reads, so `/proof <N> <bullet>` runs unchanged. Actor names come from the
   `role` fields in `.claude/proof.json` when that file exists, else the role
@@ -219,15 +229,22 @@ Print the title and the body in one code block. Then ask with
 - No PR: **Create** / **Abort**.
 - PR exists: **Edit** / **Abort**.
 
-Create:
+Create is two steps. The links in "Most impactful" need the PR number, and the
+number exists only after the first step. The first step already carries the
+full body with plain anchors, so a failure between the steps leaves a
+readable PR.
 
 ```bash
-gh pr create --base "$BASE" --title "$TITLE" --body-file "$TMP/body.md"
+URL=$(gh pr create --base "$BASE" --title "$TITLE" --body-file "$TMP/body.md")
+N=${URL##*/}
+link_anchors "$N"
+gh pr edit "$N" --body-file "$TMP/body.md"
 ```
 
 Edit:
 
 ```bash
+link_anchors "$N"
 gh pr edit "$N" --body-file "$TMP/body.md"
 ```
 
@@ -236,5 +253,5 @@ Abort prints nothing more. Print the PR URL after Create or Edit.
 ## Boundaries
 
 This skill never stages, splits, amends, rebases, or pushes. It never changes
-a PR's base, reviewers, or labels. It writes text and runs the one command
-that carries it.
+a PR's base, reviewers, or labels. It writes text and runs the commands that
+carry it.
