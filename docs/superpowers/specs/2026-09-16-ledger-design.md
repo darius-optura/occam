@@ -71,7 +71,7 @@ Input is the index. Nothing staged → print "Nothing staged." and stop. Never
    ## Most impactful
    - `path/file.ext:line` — <what it does now and why it matters>
 
-   ## Proof scenarios
+   ## Main flows
    - As <actor>, <action>; expect <result>.
    ```
 
@@ -84,7 +84,7 @@ Input is the index. Nothing staged → print "Nothing staged." and stop. Never
    section.
 
    "Most impactful" is ranked, three to five bullets, one `file:line` anchor
-   each. "Proof scenarios" are two to four bullets in `proof`'s story shape,
+   each. "Main flows" are two to four bullets in `proof`'s story shape,
    so `/proof <N> <bullet>` runs unchanged. Actor names come from
    `.claude/proof.json` when it exists, else the role name as the app shows
    it. UI-visible behaviour only. No UI in the diff → the single bullet
@@ -118,7 +118,7 @@ match.
   its rules for PR bodies and code comments`. Razor keeps `Two lines at
   most`, `was replaced or removed`, `justifies the decision`, and gains
   `ledger`. A new test on `skills/ledger/SKILL.md` asserts the three
-  headings `## What changed`, `## Most impactful`, `## Proof scenarios`, the
+  headings `## What changed`, `## Most impactful`, `## Main flows`, the
   strings `Co-Authored-By` and `Claude-Session` (the forbidden-footer rule),
   and `no verification section`. The `tldr` walk covers the new file for
   free.
