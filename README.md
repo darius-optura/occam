@@ -24,9 +24,10 @@ claude plugin install occam@occam
 | `inquest` | Adversarial review of a GitHub PR. Inline threads, one sticky summary, approve at ≥9 or request changes. |
 | `bench` | Provisions and archives an isolated worktree for a PR. |
 | `proof` | Records a proof-of-feature mp4 by driving a real Chrome through a PR or branch with agent-browser. |
+| `ledger` | Commits the staged changes with a conventional message, and writes a bullet-only PR body with the change, the most impactful lines, and the proof scenarios. |
 
 Claude Code namespaces a plugin's skills, so both `/razor` and `/occam:razor`
-work. The same holds for the other four.
+work. The same holds for the other five.
 
 `inquest` reads named sections of `scrutiny` rather than duplicating them, and
 delegates worktree lifecycle to `bench`. The three ship together for that
@@ -189,6 +190,32 @@ is optional; without it the skill signs out through the user menu.
 disables. Each user's `profile` is an `agent-browser auth save` name; `role`
 is what a story outline calls that actor. `loom` is optional. `--init` writes
 this file for you; it asks each question once and derives the profile names.
+
+## ledger writes what leaves the session
+
+`/ledger` reads the index, picks a conventional type and scope from the
+staged paths and the recent log, and commits at once. Nothing staged means
+nothing happens. `/ledger pr` reads the branch diff against its base and
+writes the PR body; `/ledger pr <N>` rewrites an existing PR from its own
+diff. Every section is a bullet list, imperative, one line per bullet:
+
+```
+## What changed
+- Add --loom to upload the finished video through Loom's web UI.
+
+## Most impactful
+- `skills/proof/proof.sh:212` — loom_upload retries the hidden file input once.
+
+## Proof scenarios
+- As admin, run /proof 8 --loom; expect a Loom share link in the terminal.
+```
+
+A repo's `PULL_REQUEST_TEMPLATE.md` or `REVIEW.md` sections stay and are
+filled as bullets; the three above are added where a heading with the same
+meaning is missing. Proof scenarios are written in the story shape `proof`
+takes, so `/proof <N> <bullet>` runs unchanged. The body is printed first and
+nothing reaches GitHub until you pick Create or Edit. Commit messages and PR
+bodies never carry a generated-with footer or a session link.
 
 ## Optional dependencies
 
