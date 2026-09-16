@@ -17,17 +17,24 @@ test('razor description keeps the tldr trigger phrases', () => {
   }
 });
 
-test('razor WRITE section keeps its rules for PR bodies and code comments', () => {
+test('razor WRITE section keeps its code-comment rules and points at ledger', () => {
   const razor = read('skills', 'razor', 'SKILL.md');
   const start = razor.indexOf('\n## WRITE');
   assert.ok(start > -1, 'razor lost the WRITE section');
   const write = razor.slice(start, razor.indexOf('\n## ', start + 1));
-  for (const rule of ['bullet list of what changed', 'no summary paragraph', 'no verification section',
-                      'Two lines at most', 'was replaced or removed', 'justifies the decision']) {
+  for (const rule of ['ledger', 'Two lines at most', 'was replaced or removed', 'justifies the decision']) {
     assert.ok(write.includes(rule), `WRITE lost the rule "${rule}"`);
   }
   // the code-comment rules mirror review-core's comment-rot check; both must exist.
   assert.ok(read('skills', 'scrutiny', 'review-core.md').includes('**Comment rot**'));
+});
+
+test('ledger owns the commit and PR-body rules', () => {
+  const ledger = read('skills', 'ledger', 'SKILL.md');
+  for (const rule of ['## What changed', '## Most impactful', '## Proof scenarios',
+                      'Co-Authored-By', 'Claude-Session', 'no verification section', 'Nothing staged']) {
+    assert.ok(ledger.includes(rule), `ledger lost "${rule}"`);
+  }
 });
 
 test('tldr appears in no skill except the razor description', () => {
