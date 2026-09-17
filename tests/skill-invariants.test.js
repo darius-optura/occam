@@ -33,6 +33,7 @@ test('razor WRITE section keeps its code-comment rules and points at ledger', ()
 test('ledger owns the commit and PR-body rules', () => {
   const ledger = read('skills', 'ledger', 'SKILL.md');
   for (const rule of ['<summary>Most impactful</summary>', '<summary>Shape</summary>', '## Main flows',
+                      '<!-- ledger:details -->', 'Details: ',
                       'Co-Authored-By', 'Claude-Session', 'no verification section', 'Nothing staged',
                       '/files#diff-', 'link_anchors']) {
     assert.ok(ledger.includes(rule), `ledger lost "${rule}"`);
