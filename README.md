@@ -24,7 +24,7 @@ claude plugin install occam@occam
 | `inquest` | Adversarial review of a GitHub PR. Inline threads, one sticky summary, approve at ≥9 or request changes. |
 | `bench` | Provisions and archives an isolated worktree for a PR. |
 | `proof` | Records a proof-of-feature mp4 by driving a real Chrome through a PR or branch with agent-browser. |
-| `ledger` | Commits the staged changes with a conventional message, and writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, and the main flows. |
+| `ledger` | Commits the staged changes with a conventional message, and writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, an optional collapsed shape diagram, and the main flows. |
 
 Claude Code namespaces a plugin's skills, so both `/razor` and `/occam:razor`
 work. The same holds for the other five.
@@ -217,6 +217,11 @@ comes first with no heading; the impactful lines are collapsed by default:
 ## Main flows
 - As admin, run /proof 8 --loom; expect a Loom share link in the terminal.
 ```
+
+When the diff changes structure, a fourth collapsed block, "Shape", carries
+one visual: a file-tree, call-tree, or pseudocode `diff`, or a Mermaid
+sequence diagram. A text-only change or one inside a single function gets
+none.
 
 A repo's `PULL_REQUEST_TEMPLATE.md` or `REVIEW.md` sections stay and are
 filled as bullets; the three blocks above are added where a heading with the

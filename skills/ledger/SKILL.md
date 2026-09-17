@@ -1,6 +1,6 @@
 ---
 name: ledger
-description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, and the main flows, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
+description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, an optional collapsed shape diagram, and the main flows, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
 argument-hint: "[pr [pr-number]]"
 allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
 ---
@@ -176,8 +176,9 @@ Every block is a bullet list. Every bullet is one line, imperative mood, a
 full sentence in STE. No prose paragraphs. No headings other than the ones
 below.
 
-Three blocks are always present. Add each one after the template's sections
-when the template has no heading with the same meaning:
+Three blocks are always present, and a fourth, **Shape**, appears only when
+the diff changes structure. Add each one after the template's sections when
+the template has no heading with the same meaning:
 
 ```
 - One bullet per change, the general description. No heading above these.
@@ -186,6 +187,15 @@ when the template has no heading with the same meaning:
 <summary>Most impactful</summary>
 
 - [`path/file.ext:line`](https://github.com/<owner>/<repo>/pull/<N>/files#diff-<sha256 of path>R<line>) — what the line does now and why it matters.
+
+</details>
+
+<details>
+<summary>Shape</summary>
+
+```diff
+ <one visual: file-tree, call-tree, or pseudocode diff, or a Mermaid sequence>
+```
 
 </details>
 
@@ -211,6 +221,59 @@ when the template has no heading with the same meaning:
     perl -pi -e 's{^- `([^`:]+):(\d+)`}{"- [`$1:$2`](https://github.com/'"$REPO"'/pull/'"$1"'/files#diff-".sha256_hex($1)."R$2)"}e; BEGIN{use Digest::SHA qw(sha256_hex)}' "$TMP/body.md"
   }
   ```
+- **Shape** is optional and collapsed. Add it only when the diff moves or
+  adds modules, changes call order, changes a branch, or adds a flow between
+  two components. A text-only change or a change inside one function gets no
+  Shape block. Most PRs carry none. One visual, never two; pick the smallest
+  form that shows the change:
+
+  | Change | Form |
+  |---|---|
+  | Modules moved or added | file-tree `diff` |
+  | Call order changed | call-tree `diff` |
+  | A branch or loop changed | pseudocode `diff` |
+  | A new exchange between two components | Mermaid `sequenceDiagram` |
+
+  ````
+  ```diff
+   src/
+   ├── commands/
+  +│   └── ledger.ts       # expands the slash command
+  -└── transport.ts
+  +└── transport/
+  +    ├── client.ts
+  +    └── stream.ts
+  ```
+
+  ```diff
+   submitForm
+     createSession
+  +    expandSkillMention
+       launchAgent
+  ```
+
+  ```diff
+   on(save)
+  -  write content
+  +  if content is unchanged
+  +    return cached result
+  +  write new content
+  ```
+
+  ```mermaid
+  sequenceDiagram
+      participant UI
+      participant Daemon
+      UI->>Daemon: send expanded prompt
+      Daemon-->>UI: stream result
+  ```
+  ````
+
+  Keep only the files, calls, or states the change touches, plus the one
+  parent that shows where they sit. Real names from the diff, no
+  placeholders. Keep the blank line after `</summary>` and before
+  `</details>`, or GitHub renders the fence as plain text. No HTML files;
+  nothing hosts them.
 - **Main flows** are two to four bullets in the story shape `proof`
   reads, so `/proof <N> <bullet>` runs unchanged. Actor names come from the
   `role` fields in `.claude/proof.json` when that file exists, else the role
