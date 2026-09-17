@@ -1,6 +1,6 @@
 ---
 name: ledger
-description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR body made of the change, a collapsed list of the most impactful lines, an optional collapsed shape diagram, and the main flows, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
+description: Write what leaves the session. `/ledger` commits the staged changes with a conventional message; `/ledger pr [N]` writes a bullet-only PR description of the change, posts one comment with the most impactful lines, an optional shape diagram, and the main flows, links the two, then creates or edits the PR. Use when asked to "write a commit message", "commit this", "write the PR description", "open a PR", or when razor's WRITE rule points here.
 argument-hint: "[pr [pr-number]]"
 allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
 ---
@@ -9,8 +9,8 @@ allowed-tools: Bash, Read, Glob, Grep, AskUserQuestion
 
 Writes the two texts that outlive the session: the commit message and the
 pull request body. One skill, two paths. The commit path reads the index and
-commits at once. The PR path reads the branch, prints the body, and asks
-before anything reaches GitHub.
+commits at once. The PR path reads the branch, prints the description and the details
+comment, and asks before anything reaches GitHub.
 
 This skill references nothing outside the plugin. Every table it needs is
 below.
@@ -176,13 +176,27 @@ Every block is a bullet list. Every bullet is one line, imperative mood, a
 full sentence in STE. No prose paragraphs. No headings other than the ones
 below.
 
-Three blocks are always present, and a fourth, **Shape**, appears only when
-the diff changes structure. Add each one after the template's sections when
-the template has no heading with the same meaning:
+The body is two files. `body.md` is the PR description: the change bullets,
+any template sections, and one `Details:` line. `details.md` is one PR
+comment: the on-behalf alert, a marker, then Most impactful, Shape when the
+diff changes structure, and Main flows. The description stays short, so a
+squash merge carries only the change bullets into the commit.
+
+`body.md`:
 
 ```
 - One bullet per change, the general description. No heading above these.
 
+Details: <link to the ledger comment, filled in step 5>
+```
+
+`details.md`:
+
+```
+> [!NOTE]
+> Posted by Claude on behalf of <name>.
+
+<!-- ledger:details -->
 <details>
 <summary>Most impactful</summary>
 
@@ -203,6 +217,10 @@ the template has no heading with the same meaning:
 - As <actor>, <action>; expect <result>.
 ```
 
+Template sections from step 2 stay in `body.md`, in their order, above the
+`Details:` line. Add the three ledger blocks to `details.md` when the template
+has no heading with the same meaning.
+
 - **The change** opens the body. One bullet per change in the diff, no
   heading. What changed is the point of the PR; a title above it says
   nothing.
@@ -217,8 +235,8 @@ the template has no heading with the same meaning:
 
   ```bash
   REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
-  link_anchors() {  # $1 = PR number; rewrites `path:line` anchors in body.md into links
-    perl -pi -e 's{^- `([^`:]+):(\d+)`}{"- [`$1:$2`](https://github.com/'"$REPO"'/pull/'"$1"'/files#diff-".sha256_hex($1)."R$2)"}e; BEGIN{use Digest::SHA qw(sha256_hex)}' "$TMP/body.md"
+  link_anchors() {  # $1 = PR number, $2 = file; rewrites `path:line` anchors into links
+    perl -pi -e 's{^- `([^`:]+):(\d+)`}{"- [`$1:$2`](https://github.com/'"$REPO"'/pull/'"$1"'/files#diff-".sha256_hex($1)."R$2)"}e; BEGIN{use Digest::SHA qw(sha256_hex)}' "$2"
   }
   ```
 - **Shape** is optional and collapsed. Add it only when the diff moves or
@@ -281,9 +299,9 @@ the template has no heading with the same meaning:
   has no user-visible surface, the section holds the single bullet
   `- None; no user-visible surface.`
 
-Sections `ledger` adds on its own carry no test-case list, no follow-ups,
+Blocks `ledger` adds on its own carry no test-case list, no follow-ups,
 and no verification section. A template section with one of those names
-stays and is filled as bullets.
+stays in `body.md` and is filled as bullets.
 
 ### 4. Title
 
@@ -294,30 +312,42 @@ it.
 
 ### 5. Confirm and send
 
-Print the title and the body in one code block. Then ask with
+Print the title, `body.md`, and `details.md` in one code block. Then ask with
 `AskUserQuestion`, two options, set by step 1:
 
 - No PR: **Create** / **Abort**.
 - PR exists: **Edit** / **Abort**.
 
-Create is two steps. The links in "Most impactful" need the PR number, and the
-number exists only after the first step. The first step already carries the
-full body with plain anchors, so a failure between the steps leaves a
-readable PR.
+Create is one chained command. The comment needs the PR number, and the
+description needs the comment's URL, so the order is create, comment, edit.
+A failure mid-chain leaves a PR with the change bullets and a bare
+`Details:` line; rerun `/ledger pr` to finish it.
 
 ```bash
-URL=$(gh pr create --base "$BASE" --title "$TITLE" --body-file "$TMP/body.md")
-N=${URL##*/}
-link_anchors "$N"
+URL=$(gh pr create --base "$BASE" --title "$TITLE" --body-file "$TMP/body.md") \
+&& N=${URL##*/} && link_anchors "$N" "$TMP/details.md" \
+&& C=$(gh api "repos/$REPO/issues/$N/comments" -F body=@"$TMP/details.md" -q .html_url) \
+&& perl -pi -e 's{^Details: .*$}{Details: '"$C"'}' "$TMP/body.md" \
+&& gh pr edit "$N" --body-file "$TMP/body.md"
+```
+
+Edit updates the marked comment in place, or creates it when missing, then
+refreshes the description. Never post a second details comment.
+
+```bash
+link_anchors "$N" "$TMP/details.md"
+CID=$(gh api "repos/$REPO/issues/$N/comments" --paginate \
+  -q '.[] | select(.body | contains("<!-- ledger:details -->")) | .id' | head -1)
+if [ -n "$CID" ]; then
+  C=$(gh api -X PATCH "repos/$REPO/issues/comments/$CID" -F body=@"$TMP/details.md" -q .html_url)
+else
+  C=$(gh api "repos/$REPO/issues/$N/comments" -F body=@"$TMP/details.md" -q .html_url)
+fi
+perl -pi -e 's{^Details: .*$}{Details: '"$C"'}' "$TMP/body.md"
 gh pr edit "$N" --body-file "$TMP/body.md"
 ```
 
-Edit:
-
-```bash
-link_anchors "$N"
-gh pr edit "$N" --body-file "$TMP/body.md"
-```
+`-F body=@file` reads the file; lowercase `-f` would post the literal string.
 
 Abort prints nothing more. Print the PR URL after Create or Edit.
 
