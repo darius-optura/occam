@@ -236,8 +236,10 @@ changes structure, a collapsed "Shape" block carries one visual: a file-tree,
 call-tree, or pseudocode `diff`, or a Mermaid sequence diagram. Every "Most
 impactful" anchor links into the PR's diff at that line. Main flows are
 written in the story shape `proof` takes, so `/proof <N> <bullet>` runs
-unchanged. A repo's `PULL_REQUEST_TEMPLATE.md` or `REVIEW.md` sections stay
-in the description and are filled as bullets.
+unchanged. A repo's PR template or `REVIEW.md` sections stay in the description and are
+filled as bullets; a Verification section lists what the session ran and its
+result, never an invented one. When the repo has `.github/pr-metadata.json`,
+its types, canonical scopes, aliases, and title limit govern the title.
 
 Create is one chained command: open the PR, post the comment, link it from
 the description. The comment lands within a second, ahead of webhook bots in
