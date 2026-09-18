@@ -189,8 +189,8 @@ Where the template or `REVIEW.md` defines body sections, keep every one of
 them, in their order, and fill each as one-line bullets. A section named
 Verification, Testing, or Checks lists the commands this session ran and
 their results, one bullet each, taken from the session's own output. When
-nothing ran, write one bullet that says what was not run and why. Never
-invent a result.
+nothing ran, write one bullet that says what was not run and why.
+Never invent a result.
 
 ### 3. Body
 
