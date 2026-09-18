@@ -34,6 +34,7 @@ test('ledger owns the commit and PR-body rules', () => {
   const ledger = read('skills', 'ledger', 'SKILL.md');
   for (const rule of ['<summary>Most impactful</summary>', '<summary>Shape</summary>', '## Main flows',
                       '<!-- ledger:details -->', 'Details: ',
+                      'pr-metadata.json', 'Never invent a result',
                       'Co-Authored-By', 'Claude-Session', 'no verification section', 'Nothing staged',
                       '/files#diff-', 'link_anchors']) {
     assert.ok(ledger.includes(rule), `ledger lost "${rule}"`);

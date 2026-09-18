@@ -52,7 +52,14 @@ git log -10 --format=%s
 
 No staged changes → print `Nothing staged.` and stop.
 
-### 2. Scope
+### 2. Policy file
+
+When `.github/pr-metadata.json` exists, read it first. Its `types`, `scopes`,
+`scopeAliases`, and `maxTitleLength` override the tables below. Use only a
+type and a canonical scope it lists; map an alias to its canonical name.
+The tables below are the fallback for a repo without that file.
+
+### 3. Scope
 
 The scope is the most specific directory the staged files share. Rules, in
 order:
@@ -79,7 +86,7 @@ order:
 | `.github/*`, `.gitlab-ci.*` | ci |
 | `Dockerfile`, `docker-compose.*` | docker |
 
-### 3. Type
+### 4. Type
 
 | Type | When |
 |---|---|
@@ -92,13 +99,14 @@ order:
 | `test` | Tests added or changed |
 | `build` | Build system, dependencies, lockfiles |
 | `ci` | CI configuration |
+| `infra` | Infrastructure or deployment |
 | `chore` | Maintenance and tooling outside `src` |
 
 Hints: new files under `src/` → `feat`. Only test files → `test`. Only
 Markdown → `docs`. `package.json` or a lockfile → `build`. Deleted files only
 → `refactor` or `chore`. The diff removes a wrong branch or a crash → `fix`.
 
-### 4. Message
+### 5. Message
 
 ```
 type(scope): imperative summary
@@ -106,12 +114,14 @@ type(scope): imperative summary
 Optional body.
 ```
 
-- The summary is under 72 characters, imperative, no trailing period.
+- The summary is under 72 characters, imperative, no trailing period. Its
+  first letter is lowercase. No ticket IDs in the summary; they go in the
+  body or the branch name.
 - Add a body only when the summary cannot carry the why. One or two full
   sentences. Say why the change exists. Never narrate the diff.
 - Follow "Footers" above.
 
-### 5. Commit
+### 6. Commit
 
 Print the message in a code block, then commit at once. No confirmation.
 
@@ -165,10 +175,22 @@ Never push. The user pushes.
 
 ### 2. Conventions
 
-Read in parallel, when present: `REVIEW.md` at the repo root, every
-`CLAUDE.md` from the root down to the directories the diff touches,
-`.github/PULL_REQUEST_TEMPLATE.md`. Where they define body sections, keep
-every one of them, in their order, and fill each as one-line bullets.
+Read in parallel, when present: `.github/pr-metadata.json` (see "Policy
+file" above; it governs the title), `REVIEW.md` at the repo root, every
+`CLAUDE.md` from the root down to the directories the diff touches, and the
+PR template. Find the template by name in any case, in `.github/`, `docs/`,
+or the root:
+
+```bash
+find .github docs . -maxdepth 1 -iname 'pull_request_template.md' 2>/dev/null | head -1
+```
+
+Where the template or `REVIEW.md` defines body sections, keep every one of
+them, in their order, and fill each as one-line bullets. A section named
+Verification, Testing, or Checks lists the commands this session ran and
+their results, one bullet each, taken from the session's own output. When
+nothing ran, write one bullet that says what was not run and why.
+Never invent a result.
 
 ### 3. Body
 
@@ -305,10 +327,12 @@ stays in `body.md` and is filled as bullets.
 
 ### 4. Title
 
-`type(scope): imperative summary`, under 72 characters. Take type and scope
-from the first `feat` or `fix` subject in `log.txt`, else from the first
-subject. When the PR exists, keep its title unless the user asks to change
-it.
+`type(scope): imperative summary`, under 72 characters or the policy file's
+`maxTitleLength`. The summary starts lowercase, ends without a period, and
+carries no ticket ID. Take type and scope from the first `feat` or `fix`
+subject in `log.txt`, else from the first subject; map an alias to its
+canonical scope when the policy file exists. When the PR exists, keep its
+title unless the user asks to change it.
 
 ### 5. Confirm and send
 
