@@ -50,9 +50,22 @@ resolved-signal. No `databaseId` available → restrict the fallback to the
 
 ## 3. Codex head guard — catch-up path (Phase 2)
 
-Only when `$CODEX_DIR` is a `bench` worktree — its branch is
-`inquest/<N>` — and `$CUR` differs from `$HEAD_SHA`, which means the PR
-gained commits after the worktree was provisioned:
+Only when `$CODEX_DIR` is a `bench` worktree — the state map's `path` for
+`<N>` — and `$CUR` differs from `$HEAD_SHA`, which means the PR gained
+commits after the worktree was provisioned.
+
+Same-repo PR — the worktree is on the PR's branch and tracks it:
+
+```bash
+git -C "$CODEX_DIR" pull --ff-only
+git -C "$CODEX_DIR" rev-parse HEAD          # must now equal $HEAD_SHA
+```
+
+A failed fast-forward means the local branch diverged from the PR. Do not
+reset it — it can hold the user's work. Record
+`invalid — working tree is not at the PR head` and skip Codex.
+
+Fork PR — the worktree is on `inquest/<N>`, which nobody works on:
 
 ```bash
 git -C "$CODEX_DIR" fetch origin pull/<N>/head
@@ -62,7 +75,7 @@ git -C "$CODEX_DIR" rev-parse HEAD          # must now equal $HEAD_SHA
 
 The branch moves forward; the worktree is never detached. Phases 3–5 then
 read the same tree Codex does, and `bench --archive` can still find the
-worktree by its `branch refs/heads/inquest/<N>` line.
+worktree by its `branch` line.
 
 In any other directory, do not move the checkout. Record
 `invalid — working tree is not at the PR head` and skip Codex.
