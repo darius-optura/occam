@@ -19,6 +19,7 @@ hooks/
   razor-statusline.sh    [RAZOR] badge
 scripts/install-statusline.sh
 tests/razor-config.test.js
+tests/inquest-watch.test.js
 ```
 
 There is no `commands/` directory. Skills are invoked directly, bare
@@ -137,6 +138,13 @@ the worktree (`hw` starts one), inquest sends it `/occam:inquest <N>` via
 `cd <worktree> && claude '/occam:inquest <N>'` and stops. It never reviews
 in the calling session. Never `claude -p`: no question tool, so it cannot
 post.
+
+**The watcher never posts.** After a non-approve post, inquest starts
+`skills/inquest/watch.sh` in the background. It triggers the next round on a
+re-requested review, or on all inquest threads resolved plus a new head SHA.
+It only sends `/occam:inquest <N>` to the session; that round still asks
+before it posts. One watcher per PR, three rounds at most.
+`tests/inquest-watch.test.js` covers every decision with a fake `gh`.
 
 **The sticky marker lives in four files.** `<!-- inquest:sticky -->` appears
 in `skills/inquest/sticky-template.md` (line 1), in `check-sticky.sh` which
