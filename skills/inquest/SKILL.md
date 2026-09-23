@@ -44,6 +44,48 @@ sticky — opens with the on-behalf alert from the "WRITE" section of the same
 razor file. The sticky template carries it after the marker; `check-sticky.sh`
 rejects a sticky without it.
 
+## Handoff — before the execution contract
+
+A PR number is given, and the cwd is not on that PR's branch (the PR's
+`headRefName`, or `inquest/<N>` for a fork) → run `bench <N>` now.
+
+Hand the review to a claude session in the worktree. Take the first case
+that applies.
+
+**herdr** — `bench` printed an `AGENT_PANE`: a claude session already runs
+in the worktree. Prompt it:
+
+```bash
+herdr agent wait "$AGENT_PANE" --until idle --timeout 120000
+herdr agent prompt "$AGENT_PANE" "/occam:inquest <N> <every other flag given>" \
+  --wait --until working --timeout 15000
+```
+
+**supacode** — `BACKEND=supacode` and `bench` printed a `WT_ID`. Open a tab
+in the worktree that starts claude with the prompt. Capture the tab ID in
+the same Bash call:
+
+```bash
+TAB_ID=$(supacode tab new -w "$WT_ID" --title "inquest-<N>" --background \
+  -i "claude '/occam:inquest <N> <every other flag given>'")
+```
+
+The handoff succeeds → print `handed off: PR #<N> → <pane $AGENT_PANE | tab
+$TAB_ID> ($WT_PATH)` and stop. That session runs every phase below; this one
+runs none. Do not create the todos here.
+
+Fallback — no herdr server and no supacode, the `git` backend, or a handoff
+command fails → print why in one line, then print the command that
+continues the review in the worktree, and stop:
+
+```bash
+cd "$WT_PATH" && claude '/occam:inquest <N> <every other flag given>'
+```
+
+Do not review here, and do not create the todos. Do not fall back to a
+headless `claude -p`: it has no question tool, so the review stops before
+it posts.
+
 ## Execution contract — FIRST, before Phase 1
 
 **Violating the letter of these rules is violating their spirit.**
@@ -88,6 +130,7 @@ pressure, "probably", or "the user is waiting".
 | Post before the gate | Every Phase 8 gate item passes first, confirmed by running its command — not by judging it "obviously fine". |
 | Post without user confirmation | Ask the user before any PR write. No question tool in the session → print the payloads and stop; do not post. |
 | Finding without a failure mode | Name the concrete failure or downgrade to Suggestion. |
+| Review here though the cwd is not on the PR's branch | Run "Handoff". The worktree session reviews the worktree; this session stops, even when no handoff works. |
 | Review in the calling session ("small diff", "faster inline") | The lanes and the judge run as fresh `general-purpose` subagents, never `fork`. No Agent tool → inline fallback per `$CORE` "Dispatch", stated in the sticky. A session that wrote the diff grades its plan, not the code. |
 | Orchestrator edits the judge's output | Findings, severities and score come from the judge and are posted unchanged. Disagree → `Orchestrator note:` under the finding. Never drop, add, or regrade. |
 | Dedup against own output | Own sticky (marker) is never a finding — update it. Own open inline threads must be matched so re-runs do not re-post them. |
@@ -116,11 +159,10 @@ Parse by format, not position:
 Decide mode and scope, then state the choice in one line
 (e.g. `PR mode: PR #1234, git diff origin/main...HEAD (24 files, +812/-130)`).
 
-1. PR id given, cwd is not that PR's worktree → `bench <N>`, `cd` into
-   the printed path. Mode = PR.
-2. PR id given, already inside its worktree (branch `inquest/<N>`) → review
-   here. Mode = PR.
-3. No PR id → run "Scope resolution" in `$CORE`:
+1. PR id given, cwd already on the PR's branch (`headRefName`, or
+   `inquest/<N>` for a fork) → review here. Mode = PR. A PR id with any
+   other cwd never reaches this phase: "Handoff" ran and stopped.
+2. No PR id → run "Scope resolution" in `$CORE`:
    - PR exists for the branch → PR mode. Resolve `N`, `PR_AUTHOR`, `BASE` via
      `gh pr view`. Scope `git diff origin/$BASE...HEAD`.
    - Else branch/working-tree diff → local mode. For a branch or range,
@@ -167,7 +209,7 @@ continue to Phase 3. Record `Codex: manual — awaiting paste` for now.
 
    Resolve `HEAD_SHA` now (PR mode — Phase 4 reuses it), then check the
    directory Codex will run in. In PR mode that is the `bench` worktree,
-   `$WT_PATH`, already on branch `inquest/<N>`:
+   `$WT_PATH`, already on the PR's branch:
    ```bash
    HEAD_SHA=$(gh pr view <N> --json headRefOid -q .headRefOid)
    CODEX_DIR="${WT_PATH:-$PWD}"
@@ -177,13 +219,9 @@ continue to Phase 3. Record `Codex: manual — awaiting paste` for now.
 
    Equal → launch.
 
-   Different, and `$CODEX_DIR` is a `bench` worktree (its branch is
-   `inquest/<N>`) → the PR gained commits after provisioning. Move the branch
-   forward, staying on it (reference.md §3):
-   ```bash
-   git -C "$CODEX_DIR" fetch origin pull/<N>/head
-   git -C "$CODEX_DIR" checkout -B inquest/<N> FETCH_HEAD
-   ```
+   Different, and `$CODEX_DIR` is a `bench` worktree (the state map's
+   `path` for `<N>`) → the PR gained commits after provisioning. Move the
+   branch forward, staying on it (reference.md §3).
 
    Different, and `$CODEX_DIR` is **not** a `bench` worktree → do NOT move
    it. This is the user's own checkout, and a review is not worth rewriting
@@ -191,7 +229,7 @@ continue to Phase 3. Record `Codex: manual — awaiting paste` for now.
    `invalid — working tree is not at the PR head`.
 
    **Never detach.** Never check out a raw SHA. Every checkout this skill
-   makes lands on branch `inquest/<N>`; a detached worktree is invisible to
+   makes lands on a named branch; a detached worktree is invisible to
    `bench --archive`, which finds worktrees by their branch line.
 4. **Launch in the background** against that directory, output to a file
    (reference.md §4 for flags and output shape):

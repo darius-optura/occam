@@ -118,11 +118,25 @@ match `(?:tldr|razor)`. Everything razor prints back says razor.
 so dropping the namespaced form makes the hook stop firing for the command
 most people use.
 
-**Never detach a checkout.** Every worktree this plugin creates lands on
-branch `inquest/<N>`. `git worktree add <path> <sha>` detaches, which is why
-`bench` passes `-b`. A detached worktree has no `branch` line in
+**Never detach a checkout.** Every worktree this plugin creates lands on a
+named branch: the PR's own `headRefName` (tracking `origin`), or
+`inquest/<N>` for a fork PR. `git worktree add <path> <sha>` detaches, which
+is why `bench` passes `-b`. A detached worktree has no `branch` line in
 `git worktree list --porcelain`, and `bench --archive` finds worktrees by
-that line.
+that line. The state map records the branch.
+
+**Never delete a real PR branch with work on it.** A same-repo worktree is on
+the PR's branch, and the user may commit there. `bench` never deletes an
+existing same-repo branch on provision, and `--archive` stops on
+uncommitted files or unpushed commits.
+
+**inquest hands off before its todos.** When `bench` finds a claude agent in
+the worktree (`hw` starts one), inquest sends it `/occam:inquest <N>` via
+`herdr agent prompt` and stops. On supacode it opens a worktree tab that runs
+`claude '/occam:inquest <N>'`. With neither it prints
+`cd <worktree> && claude '/occam:inquest <N>'` and stops. It never reviews
+in the calling session. Never `claude -p`: no question tool, so it cannot
+post.
 
 **The sticky marker lives in four files.** `<!-- inquest:sticky -->` appears
 in `skills/inquest/sticky-template.md` (line 1), in `check-sticky.sh` which
@@ -171,7 +185,8 @@ lane table. No Agent tool → the loud inline fallback, never a silent one.
 4. `/inquest <N>` against a throwaway PR. This is the one that matters:
    `inquest` is the only skill that writes to GitHub, so a bad reference
    fails during a review, not during install. Confirm `bench` prints its
-   backend, the branch is `inquest/<N>`, and the validator prints `OK`.
+   backend, the branch is the PR's `headRefName`, the review hands off to
+   the worktree's claude pane, and the validator prints `OK`.
 5. `BENCH_BACKEND=git /bench <N>` — the fallback path a teammate with no
    workspace manager gets. Do not test this by stripping `PATH`; that removes
    `gh`, which lives in `/opt/homebrew/bin`, and the flow fails before it

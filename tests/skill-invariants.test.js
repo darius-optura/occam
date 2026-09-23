@@ -161,7 +161,24 @@ test('bench keeps its backend contract', () => {
   assert.match(bench, /herdr worktree create[\s\S]{0,200}--path "\$MAIN_ROOT\/\.claude\/worktrees/,
     'herdr create lost --path');
   // git must create the branch; a detached worktree is unfindable at archive.
-  assert.ok(bench.includes('git worktree add -b inquest/<N>'), 'git backend lost -b');
+  assert.ok(bench.includes('git worktree add -b "$WT_BRANCH"'), 'git backend lost -b');
+  // A same-repo PR lands on its own branch, hw with no base so it tracks origin.
+  assert.ok(bench.includes(`fish -c "hw '$WT_BRANCH'"`), 'hw lost the same-repo branch form');
+  // Archive must not delete a real branch that holds unpushed work.
+  assert.ok(bench.includes('rev-list --count "@{upstream}..HEAD"'), 'archive lost the unpushed guard');
+  // The state map records the branch, so archive finds a non-inquest branch.
+  assert.ok(bench.includes('branch:$br'), 'state map lost the branch field');
+});
+
+test('inquest hands off to the worktree agent, with a fallback', () => {
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  assert.ok(skill.includes('## Handoff'), 'inquest lost the Handoff section');
+  assert.ok(skill.includes('herdr agent prompt "$AGENT_PANE"'), 'handoff lost the agent prompt');
+  assert.ok(skill.includes('supacode tab new -w "$WT_ID"'), 'handoff lost the supacode tab');
+  assert.ok(skill.indexOf('## Handoff') < skill.indexOf('## Execution contract'),
+    'handoff must run before the todos are created');
+  assert.ok(/Fallback[\s\S]{0,300}cd "\$WT_PATH" && claude '\/occam:inquest/.test(skill),
+    'handoff lost the continue-in-worktree fallback');
 });
 
 test('proof skill frontmatter names its modes', () => {
