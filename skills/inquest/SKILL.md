@@ -18,8 +18,8 @@ everything to a fresh judge, and posts what the judge returns. It adds,
 drops, and regrades nothing.
 
 Command mechanics live in `reference.md` next to this file (§1–§8). Read the
-section when a phase points at it. That file, `check-sticky.sh` and
-`codex-manual-prompt.md` sit beside this one; the review core ships with
+section when a phase points at it. That file, `check-sticky.sh`, `watch.sh`
+and `codex-manual-prompt.md` sit beside this one; the review core ships with
 `scrutiny`:
 
 ```bash
@@ -113,7 +113,8 @@ drop items. Never start a Phase 8 write while an earlier item is open.
    `OK`
 9. Phase 8 — pre-post gate: every item confirmed by running its command
 10. Phase 8 — user confirmed the post
-11. Phase 8 — post (or `--dry-run` print)
+11. Phase 8 — post (or `--dry-run` print), then the watcher started or its
+    skip reason printed
 
 ## Non-negotiables
 
@@ -150,6 +151,7 @@ Parse by format, not position:
 - `--archive` — after posting, archive the worktree (`bench --archive`)
   as the final operation. No-op in local mode.
 - `--dry-run` — full review, zero writes, print what would post.
+- `--no-watch` — after posting, do not start the watcher (Phase 8 "Watch").
 - `--manual-codex` — do not run the Codex CLI. Print the Codex prompt for
   the user to run in a Codex chat, then take the pasted output as the
   external pass at Phase 6. For when chat usage is cheaper than CLI usage.
@@ -428,6 +430,56 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   shapes from the template. The `Verdict:` value derives from the FINAL event,
   not the score.
 
+### Watch
+
+After the post, start `watch.sh` in the background. It polls the PR with
+`gh` and starts the next round in this session when the PR is ready:
+
+- the author re-requested your review, or
+- every thread inquest opened is resolved **and** the head moved past the
+  reviewed SHA.
+
+The watcher only starts the round. It never posts, and it never approves.
+The next round asks the user before it posts, as every round does.
+
+Skip it, and print the reason in one line, when any of these is true:
+local mode, `--dry-run`, `--no-watch`, `--archive`, or the final event is
+`APPROVE`. On `APPROVE`, also stop a running watcher for `<N>`.
+
+State lives next to the bench map, one entry per PR:
+
+```bash
+WATCH="$MAIN_ROOT/.claude/worktrees/.inquest-watch.json"
+[ -f "$WATCH" ] || echo '{}' > "$WATCH"
+ROUND=$(( $(jq -r --arg n "<N>" '.[$n].round // 0' "$WATCH") + 1 ))
+OLD=$(jq -r --arg n "<N>" '.[$n].pid // empty' "$WATCH")
+# A stale pid can belong to another process by now; kill only a watcher.
+[ -n "$OLD" ] && ps -p "$OLD" -o command= 2>/dev/null | grep -q watch.sh && kill "$OLD"
+```
+
+`ROUND` above 3 → do not start it. Delete the entry and print
+`watch: stopped after 3 rounds — run /occam:inquest <N> by hand`.
+
+Else start one watcher, with this session as its target. Pass both target
+flags every time; the script ignores an empty one:
+
+```bash
+LOG="$MAIN_ROOT/.claude/worktrees/.inquest-watch-<N>.log"
+nohup sh "$SKILL_DIR/watch.sh" --repo "$OWNER/$REPO" --pr <N> --sha "$HEAD_SHA" \
+  --path "$(git rev-parse --show-toplevel)" \
+  --pane "${HERDR_PANE_ID:-}" --wt-id "${SUPACODE_WORKTREE_ID:-}" > "$LOG" 2>&1 &
+PID=$!
+tmp=$(mktemp)
+jq --arg n "<N>" --argjson pid "$PID" --argjson r "$ROUND" --arg sha "$HEAD_SHA" \
+   '.[$n] = {pid:$pid, round:$r, sha:$sha}' "$WATCH" > "$tmp" && mv "$tmp" "$WATCH"
+echo "watch: round $ROUND, pid $PID, log $LOG"
+```
+
+With no pane and no supacode worktree, the watcher sends a macOS
+notification and writes the command to continue into its log. It exits
+after one trigger, and when the PR is merged or closed, or the worktree is
+gone.
+
 ### PR hygiene
 
 Pull `gh pr view <N> --json title,body`, grade per `$CORE` "PR hygiene".
@@ -448,4 +500,5 @@ moved it). `--archive` is also skipped — print that it would archive.
 ### `--archive`
 
 PR mode only, the final operation after posting — nothing runs after it.
-Delegate to `bench --archive <N>`.
+Stop the PR's watcher first (the same guarded `kill` as in "Watch", then
+delete the entry). Then delegate to `bench --archive <N>`.
