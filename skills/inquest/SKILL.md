@@ -13,7 +13,7 @@ adversarial pass, scoring, fallback rubric) and `bench` (worktree lifecycle)
 writes to GitHub. Local mode prints to the terminal only.
 
 The review itself never runs in this session. This session orchestrates:
-it dispatches three review lanes as fresh subagents, collects Codex, hands
+it dispatches four review lanes as fresh subagents, collects Codex, hands
 everything to a fresh judge, and posts what the judge returns. It adds,
 drops, and regrades nothing.
 
@@ -100,10 +100,10 @@ drop items. Never start a Phase 8 write while an earlier item is open.
 2. Phase 2 — Codex launched in the background (availability output + head
    guard pasted), or the `--manual-codex` prompt printed, or a verbatim skip
    reason recorded
-3. Phase 3 — criteria paths resolved + lanes A, B, C dispatched as fresh
+3. Phase 3 — criteria paths resolved + lanes A, B, C, D dispatched as fresh
    subagents (or the in-session fallback reason recorded)
 4. Phase 4 — prior threads + CI pulled (PR mode)
-5. Phase 5 — all three lanes returned; `Checked:` lines cover all seven
+5. Phase 5 — all four lanes returned; `Checked:` lines cover all eight
    distrust passes
 6. Phase 6 — Codex result collected at the PR head SHA (CLI output, or the
    user's pasted chat output), or the recorded reason confirmed
@@ -250,8 +250,9 @@ of REVIEW.md, the CLAUDE.md chain and the stack checklist
 
 Then run "Dispatch" in `$CORE`: fill the lane brief with the worktree path,
 `git diff <BASE_SHA>...<HEAD_SHA>`, the PR title, the absolute `$CORE` path
-and the criteria paths; launch lanes A, B and C in one message as fresh
-`general-purpose` subagents, never `fork`. Do not wait — continue to
+and the criteria paths; launch lanes A, B, C and D in one message as fresh
+`general-purpose` subagents (lane D on `code-simplifier` when listed, per
+"Dispatch"), never `fork`. Do not wait — continue to
 Phase 4 while they run beside Codex.
 
 **REVIEW.md is criteria only**, applied verbatim by the lanes and the
@@ -286,11 +287,11 @@ included): existing reviews + issue comments, inline review comments
 
 ## Phase 5 — Collect the lanes
 
-Wait for lanes A, B and C. Check each report: a `Checked:` line per
+Wait for lanes A, B, C and D. Check each report: a `Checked:` line per
 assigned distrust pass plus the always-flag scan, and every finding in the
 `Finding` shape with a `location` inside the diff. A lane missing a
-`Checked:` line is re-run with the same brief. Together the three reports
-must name all seven passes. Keep the reports verbatim for the judge; do not
+`Checked:` line is re-run with the same brief. Together the four reports
+must name all eight passes. Keep the reports verbatim for the judge; do not
 summarise, filter, or grade them here. "Review" in `$CORE` runs only inside
 the lanes and the judge.
 
@@ -321,7 +322,7 @@ external pass.
 
 ## Phase 7 — Judge
 
-Run "Judge" in `$CORE`: one fresh `general-purpose` subagent with the three
+Run "Judge" in `$CORE`: one fresh `general-purpose` subagent with the four
 lane reports, the Codex output (or the recorded skip reason), and the same
 header as the lane brief. The judge dedups, verifies every finding against
 the tree, drops what it cannot confirm with a reason, and scores per
@@ -421,7 +422,7 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   which prior findings are now fixed.
 - Findings: one line each — `- [Severity] \`file:line\` — failure mode + fix
   direction. (source)`. Never restate the inline thread body.
-- One sentence for the cleared passes ("Three lanes, Codex and the judge
+- One sentence for the cleared passes ("Four lanes, Codex and the judge
   ran in fresh sessions; prior threads verified, not re-raised."). The
   in-session fallback from `$CORE` "Dispatch" is named here when it fired. Security or hygiene get a sentence ONLY when
   something failed or deserves note — no pass/fail tables, no empty sections,

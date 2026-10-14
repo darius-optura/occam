@@ -18,15 +18,15 @@ reads the same file. Each phase below names the section to run; read the
 core once, up front, and follow the named sections verbatim.
 
 The review itself never runs in this session. This session is the
-orchestrator: it resolves scope and criteria paths, dispatches three review
+orchestrator: it resolves scope and criteria paths, dispatches four review
 lanes as fresh subagents, hands their reports to a fresh judge, and prints
 the result. It adds, drops, and regrades nothing — a session that wrote the
 diff cannot grade it. The briefs need `review-core.md` as an absolute
 path: `${CLAUDE_PLUGIN_ROOT}/skills/scrutiny/review-core.md`.
 
 On invocation, create one TodoWrite todo per phase (scope resolution,
-criteria paths resolved, three lanes dispatched, lanes returned with all
-seven passes checked, judge returned with score, PR hygiene, output). Mark
+criteria paths resolved, four lanes dispatched, lanes returned with all
+eight passes checked, judge returned with score, PR hygiene, output). Mark
 each complete only after the work is done and its evidence exists.
 
 ## Inputs
@@ -67,14 +67,14 @@ beyond that — the lanes read it.
 ## Phase 2: Dispatch
 
 Run "Dispatch" in `review-core.md`: fill the lane brief once, launch lanes
-A, B and C in one message as fresh `general-purpose` subagents, never
-`fork`. When they return, confirm every lane printed a `Checked:` line for
+A, B, C and D in one message as fresh `general-purpose` subagents (lane D
+on `code-simplifier` when listed, per "Dispatch"), never `fork`. When they return, confirm every lane printed a `Checked:` line for
 each of its passes; re-run a lane that did not. No Agent tool → the inline
 fallback in "Dispatch", and its `Reviewers:` line in the output.
 
 ## Phase 3: Judge
 
-Run "Judge" in `review-core.md` with the three lane reports verbatim and
+Run "Judge" in `review-core.md` with the four lane reports verbatim and
 `External pass: none`. Its findings and `Score:` line are final. Run
 "Review" in `review-core.md` only through the lanes and the judge, never
 here.
@@ -92,7 +92,7 @@ summary uses, so it is interchangeable with the GitHub version:
    one-line assessment.
 2. **Scope** — one line stating exactly what was diffed (e.g.
    `Scope: git diff origin/main...HEAD (24 files, +812/-130)`), then
-   `Reviewers: 3 lanes + judge, fresh subagents` — or the in-session line
+   `Reviewers: 4 lanes + judge, fresh subagents` — or the in-session line
    from "Dispatch" when the Agent tool was missing.
 3. **Summary** — what the change does and its impact.
 4. **PR Hygiene** — pass/fail checklist if a PR exists, else skipped.
