@@ -175,11 +175,12 @@ Score · PR hygiene · Standard criteria fallback
 The three skills ship together for this reason. `inquest` alone is
 incomplete.
 
-**The review never runs in the calling session.** "Dispatch" sends three
-lanes to fresh `general-purpose` subagents and "Judge" merges and scores in
-a fourth; the calling session only orchestrates. A session that wrote the
+**The review never runs in the calling session.** "Dispatch" sends four
+lanes to fresh `general-purpose` subagents (lane D to the `code-simplifier`
+agent when the session lists it, suggestions only) and "Judge" merges and scores in
+a fifth; the calling session only orchestrates. A session that wrote the
 diff grades its own plan, so `fork` is forbidden and the orchestrator may
-not add, drop, or regrade a finding. The lanes together must own all seven
+not add, drop, or regrade a finding. The lanes together must own all eight
 distrust passes and all five categories; the invariants test checks the
 lane table. No Agent tool → the loud inline fallback, never a silent one.
 

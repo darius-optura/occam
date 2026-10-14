@@ -36,9 +36,9 @@ reason; `inquest` on its own is incomplete.
 ## The review never runs in your session
 
 A session that wrote the diff grades its own plan, not the code. So `scrutiny`
-and `inquest` send the review to fresh subagents: three lanes in parallel
-(trust boundaries, behaviour, hygiene) that together cover the five review
-categories and all seven distrust passes, then a judge that dedups, verifies
+and `inquest` send the review to fresh subagents: four lanes in parallel
+(trust boundaries, behaviour, hygiene, simplicity) that together cover the five review
+categories and all eight distrust passes, then a judge that dedups, verifies
 every finding against the tree, and scores. The calling session only
 orchestrates. It adds, drops, and regrades nothing. In `inquest` the lanes run
 beside Codex, and the judge merges both.

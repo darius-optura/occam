@@ -88,7 +88,7 @@ Walk the diff through the five categories ("Review categories" above). Then
 run the explicit always-flag scan: if REVIEW.md, CLAUDE.md, or the stack
 checklist lists "always flag" patterns (or `[ ]` checklist items), scan the
 diff for each one and either flag or note that none were found — it is the
-highest-signal part of the review. Then the seven distrust passes, every
+highest-signal part of the review. Then the eight distrust passes, every
 one, every time, stating what you checked:
 
 1. **Tests weakened** — deleted, skipped, commented out, or relaxed to hide
@@ -111,6 +111,26 @@ one, every time, stating what you checked:
      delete, or compress to ≤2 lines stating a non-obvious *why*.
    Never flag a ≤2-line, present-tense comment stating a hidden constraint,
    invariant, or workaround.
+8. **Over-building (YAGNI)** — code the stated purpose does not need. One
+   finding per instance, the simpler form in the fix:
+   - Abstraction with one implementation or one caller — interface,
+     factory, strategy, base class, generic parameter, plugin hook.
+   - Option, flag, config key, or parameter no caller sets to a
+     non-default value.
+   - New helper that duplicates one in the tree (name it), or wraps a
+     single call.
+   - Handling for states the code cannot reach — checks the types or
+     callers already rule out, a catch that only rethrows.
+   - Pass-through layers — wrappers, single-use indirection, a module for
+     one function.
+   Severity: **[Suggestion]** by default. **[Warning]** only for blatant
+   over-engineering — a layer, framework, or config surface built for
+   callers that do not exist, whose removal deletes a meaningful share of
+   the diff. Never flag complexity a REVIEW.md/CLAUDE.md rule, a test, or
+   a second real caller requires; never propose a simplification that
+   changes behaviour, trades clarity for fewer lines (nested ternaries,
+   dense one-liners), or removes an abstraction that already earns its
+   keep.
 
 Every finding carries:
 
@@ -134,16 +154,22 @@ Skip these unless REVIEW.md says otherwise:
 The reviewer must not share the author's context. A session that wrote the
 diff grades its own plan, not the code, and a long build transcript dilutes
 the stance above. So "Review" never runs in the calling session. It runs in
-fresh subagents: three lanes in parallel, then one judge ("Judge" below).
+fresh subagents: four lanes in parallel, then one judge ("Judge" below).
 The calling session is the orchestrator. It resolves scope and criteria
 paths, spawns, collects, and formats. It adds, drops, and regrades nothing.
 
 **Mechanics.** Use the Agent tool with `subagent_type: general-purpose`,
 never `fork` — a fork inherits the conversation and defeats the isolation.
-Launch all three lanes in one message so they run concurrently. Each lane
+Launch all four lanes in one message so they run concurrently. Each lane
 gets the same brief with its own row from the table below.
 
-No Agent tool in the session → run the three lanes inline, in order, then
+Lane D only: when the session's agent list offers
+`code-simplifier:code-simplifier` or `pr-review-toolkit:code-simplifier`,
+use that `subagent_type` instead, with the same brief plus the line
+`Report suggestions only. Do not apply them.` It is still a fresh agent,
+not a fork. Neither listed → `general-purpose`.
+
+No Agent tool in the session → run the four lanes inline, in order, then
 the judge inline, and print
 `Reviewers: in-session (no Agent tool) — reviewer shared the author's context`
 in the output. Never fall back silently.
@@ -155,9 +181,10 @@ in the output. Never fall back silently.
 | A — trust boundaries | Security | 2 Auth missing/bypassed · 3 Hardcoded secrets · 6 Missing input validation |
 | B — behaviour | Logic · Performance · Testing | 1 Tests weakened |
 | C — hygiene | Maintainability | 4 Dead "compat" code · 5 Scope smuggling · 7 Comment rot |
+| D — simplicity | Maintainability | 8 Over-building (YAGNI) |
 
 Every lane also runs the always-flag scan; the judge dedups the overlap.
-Together the lanes cover all five categories and all seven passes. A lane
+Together the lanes cover all five categories and all eight passes. A lane
 that returns without a `Checked:` line for each of its passes is re-run.
 
 ### Lane brief
@@ -220,14 +247,14 @@ header as the lane brief. The judge:
 ### Judge brief
 
 ```text
-You are the judge of an adversarial code review. Three review lanes and
+You are the judge of an adversarial code review. Four review lanes and
 possibly an external pass have reported. You have not seen this change
 before.
 
 Repo / Scope / Purpose / Core / Criteria: <as in the lane brief>
 
 Lane reports (verbatim):
-<lane A> <lane B> <lane C>
+<lane A> <lane B> <lane C> <lane D>
 External pass: <Codex output verbatim, or "none">
 
 1. Read the "Review", "Score" and "Standard criteria fallback" sections of
@@ -243,7 +270,7 @@ External pass: <Codex output verbatim, or "none">
    Findings — each in the lane `Finding` shape plus
    `sources: <lanes and/or external, e.g. A, C, codex>`
    Dropped — `location — reason` per dropped finding
-   Passes — the seven distrust passes, each with its lane and finding count
+   Passes — the eight distrust passes, each with its lane and finding count
    Score: N/10 — <deductions itemised>
 
 Do not modify files. Do not post anywhere.

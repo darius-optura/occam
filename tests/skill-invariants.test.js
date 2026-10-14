@@ -80,11 +80,11 @@ test('the review runs in fresh subagents, and the lanes cover every pass', () =>
   // a fork inherits the author's context, which is the bias this exists to remove.
   assert.ok(dispatch.includes('`subagent_type: general-purpose`'), 'Dispatch lost the subagent type');
   assert.ok(/never `fork`/.test(dispatch), 'Dispatch no longer forbids fork');
-  // the three lanes must still add up to the seven distrust passes and five categories.
+  // the four lanes must still add up to the eight distrust passes and five categories.
   const lanes = dispatch.slice(dispatch.indexOf('### Lanes'), dispatch.indexOf('### Lane brief'));
   for (const pass of ['1 Tests weakened', '2 Auth missing/bypassed', '3 Hardcoded secrets',
                       '4 Dead "compat" code', '5 Scope smuggling', '6 Missing input validation',
-                      '7 Comment rot']) {
+                      '7 Comment rot', '8 Over-building (YAGNI)']) {
     assert.ok(lanes.includes(pass), `no lane owns distrust pass "${pass}"`);
   }
   for (const cat of ['Security', 'Logic', 'Performance', 'Maintainability', 'Testing']) {
