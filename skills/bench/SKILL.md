@@ -99,14 +99,16 @@ the archive flow must use the same one.
 
    **hw** — same-repo: give only the branch. With no base, `hw` fetches
    `origin/<branch>`, bases the worktree on it and sets the upstream. Fork:
-   pass the fetched SHA, which `hw` uses as given. Run it from `MAIN_ROOT`
-   — it resolves the repo from its cwd:
+   pass the fetched SHA, which `hw` uses as given. Always pass `--review`:
+   the worktree is for a PR, so it gets the review layout. Run it from
+   `MAIN_ROOT` — it resolves the repo from its cwd:
    ```bash
-   ( cd "$MAIN_ROOT" && fish -c "hw '$WT_BRANCH'" )           # same-repo
-   ( cd "$MAIN_ROOT" && fish -c "hw inquest/<N> $SHA" )       # fork
+   ( cd "$MAIN_ROOT" && fish -c "hw --review '$WT_BRANCH'" )      # same-repo
+   ( cd "$MAIN_ROOT" && fish -c "hw --review inquest/<N> $SHA" )  # fork
    ```
    `hw` creates `$MAIN_ROOT/.claude/worktrees/$WT_BRANCH`, runs the repo's
-   `.herdr/setup.sh` if present, and starts a claude agent in the worktree.
+   `.herdr/setup.sh` if present, and lays out claude | glance (PR), with a
+   claude agent in the worktree.
    It refuses an existing directory — that lands in "When the backend's own
    create fails" below. Read `WT_PATH` and `WT_ID` back the same way as
    **herdr**.

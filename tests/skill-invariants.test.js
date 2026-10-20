@@ -163,7 +163,8 @@ test('bench keeps its backend contract', () => {
   // git must create the branch; a detached worktree is unfindable at archive.
   assert.ok(bench.includes('git worktree add -b "$WT_BRANCH"'), 'git backend lost -b');
   // A same-repo PR lands on its own branch, hw with no base so it tracks origin.
-  assert.ok(bench.includes(`fish -c "hw '$WT_BRANCH'"`), 'hw lost the same-repo branch form');
+  assert.ok(bench.includes(`fish -c "hw --review '$WT_BRANCH'"`), 'hw lost the same-repo branch form');
+  assert.ok(bench.includes('fish -c "hw --review inquest/<N> $SHA"'), 'hw fork form lost --review');
   // Archive must not delete a real branch that holds unpushed work.
   assert.ok(bench.includes('rev-list --count "@{upstream}..HEAD"'), 'archive lost the unpushed guard');
   // The state map records the branch, so archive finds a non-inquest branch.
