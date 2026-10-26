@@ -206,5 +206,6 @@ lane table. No Agent tool → the loud inline fallback, never a silent one.
 ## Conventions
 
 Conventional commits. Skill prose is written in the register of the skill it
-lives in. Commit messages are full sentences with articles, active voice, and
+lives in. Durable decisions go in `docs/decisions.md`; read it before you
+re-open one. Commit messages are full sentences with articles, active voice, and
 say **why**, not only what.
