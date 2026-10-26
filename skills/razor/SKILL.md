@@ -94,10 +94,21 @@ The ladder — stop at the first rung that holds:
 Reflex, not research. Two rungs work → take the higher one, move on.
 
 - No unrequested abstractions: no interface with one impl, no factory for one product, no config for a value that never changes.
-- No boilerplate/scaffolding "for later". Deletion over addition. Boring over clever.
-- Fewest files. Shortest working diff wins.
+- No boilerplate/scaffolding "for later". Boring over clever.
+- Subtract before you add. Remove the dead branch, the stale flag, the unused param first.
+- Fewest files. Shortest working diff wins — on the right design. A new requirement that fights the old shape → build what you would have built if it had been there from the start, in small steps. A bolt-on that adds a branch to every caller is not short.
+- One decision lives in one place. Second copy of a rule, constant, or mapping → extract it. Two similar lines are not a decision.
 - Mark deliberate cuts with a `razor:` comment naming the ceiling + upgrade path: `# razor: global lock, per-account locks if throughput matters`.
-- Non-trivial logic (branch/loop/parser/money/security path) leaves ONE runnable check — smallest thing that fails if logic breaks. No frameworks/fixtures unless asked.
+
+**Shape first.** Get the data shape right before the logic. Make the illegal state impossible to write: one enum over two bools, a parsed type over a raw string. Never silence the compiler — no `as any`, `# type: ignore`, or `!` to get past a check.
+
+**Check at the edge, trust inside.** Parse outside data once, where it enters. Inside, no second validation and no `if x is None` for a value the edge guarantees. Business logic in a pure function, I/O around it.
+
+**Fix the cause.** Reproduce the bug first. A guard that hides the crash is not a fix. Two fixes on one premise fail → stop. Write the premise in one sentence and test it before fix three.
+
+**Test first, test behavior.** Non-trivial logic (branch/loop/parser/money/security path) gets ONE runnable check, written before the code. See it fail for the reason you expect. Then make the smallest change that passes. The check calls the code the way its caller does and asserts what the caller sees. Still passes if every function returns nothing → delete it. No honest check possible → write none, say so. No frameworks/fixtures unless asked.
+
+**Refactor under a pin.** Pin current behavior with a check. Change the structure. Run the check. Never change structure and behavior in one step.
 
 Code output pattern: `[code] → skipped: [X], add when [Y].`
 
@@ -135,6 +146,19 @@ stating a hidden constraint, invariant, or workaround. Never write a comment tha
 That history belongs in the commit body. The next reader sees the code, not the change.
 `razor:` markers from BUILD are the one exception; they stay short and name the ceiling.
 
+**Decision log.** A decision that outlives the change goes in `docs/decisions.md`: a chosen
+convention, a rejected approach, the ceiling behind a `razor:` marker. If the repo already
+keeps ADRs (`docs/adr/`, `docs/decisions/`), use those instead. Append; newest last.
+
+```
+## 2026-10-26 — <the decision, one line>
+Why: <the constraint or evidence>.
+Rejected: <alternative> — <one-line reason>.
+```
+
+Log decisions, not actions; git holds the actions. Never edit an old entry. A reversal is a
+new entry that names the old one.
+
 ## Examples
 
 Talk — "Why React component re-render?"
@@ -167,7 +191,7 @@ Example — destructive op:
 
 ## When NOT to minimize
 
-Never simplify away: input validation at trust boundaries, error handling that prevents data loss, security measures, accessibility basics, anything explicitly requested. User wants the full version → build it, no re-arguing. Lazy means writing less code, not picking the flimsier algorithm or skipping the check.
+Never simplify away: input validation at trust boundaries, error handling that prevents data loss, idempotency of a write that can run twice (migration, job, retry), security measures, accessibility basics, anything explicitly requested. User wants the full version → build it, no re-arguing. Lazy means writing less code, not picking the flimsier algorithm or skipping the check.
 
 ## Pre-send check
 
