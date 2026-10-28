@@ -8,11 +8,12 @@ const { execFileSync } = require('node:child_process');
 const script = path.join(__dirname, '..', 'skills', 'inquest', 'watch.sh');
 const ALERT = '> [!NOTE]\n> Posted by Claude on behalf of Darius.\n\nFinding.';
 
-// A bin dir whose gh prints $FAKE_GH_JSON and whose herdr logs its args.
+// A bin dir whose gh prints $FAKE_GH_JSON and whose herdr and rex log their args.
 function fakeBin() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'watch-'));
   fs.writeFileSync(path.join(dir, 'gh'), '#!/bin/sh\nprintf "%s" "$FAKE_GH_JSON"\n', { mode: 0o755 });
   fs.writeFileSync(path.join(dir, 'herdr'), '#!/bin/sh\necho "$*" >> "$HERDR_LOG"\n', { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'rex'), '#!/bin/sh\necho "$*" >> "$HERDR_LOG"\n', { mode: 0o755 });
   // Keep the no-pane path from raising a real macOS notification.
   fs.writeFileSync(path.join(dir, 'osascript'), '#!/bin/sh\n', { mode: 0o755 });
   return dir;
@@ -90,6 +91,14 @@ test('a trigger sends the next round to the herdr pane', () => {
   assert.match(out, /next round sent to pane wX:p1/);
   assert.match(herdr, /agent wait wX:p1 --until idle/);
   assert.match(herdr, /agent prompt wX:p1 \/occam:inquest 7/);
+});
+
+test('a trigger types the next round into the rex block, scoped to its session', () => {
+  const { out, herdr } = run(pr({ requested: ['me'] }), ['--rex-session', 's1', '--rex-block', 'b1']);
+  assert.match(out, /next round sent to rex block b1/);
+  // a bare -b resolves inside the caller's session, so -s must go with it
+  assert.match(herdr, /^send -s s1 -b b1 \/occam:inquest 7$/m);
+  assert.match(herdr, /^send-key -s s1 -b b1 enter$/m);
 });
 
 test('with no pane, a trigger prints the command to continue', () => {

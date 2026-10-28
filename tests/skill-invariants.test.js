@@ -157,6 +157,13 @@ test('bench keeps its backend contract', () => {
   const probe = bench.indexOf("fish -c 'type -q hw'");
   assert.ok(probe > -1, 'bench lost the hw probe');
   assert.ok(probe < bench.indexOf('command -v supacode'), 'hw must be probed first');
+  // rw wins only inside Rex, and not when herdr runs inside that Rex block.
+  const rw = bench.indexOf("fish -c 'type -q rw'");
+  assert.ok(rw > -1 && rw < probe, 'rw must be probed before hw');
+  assert.match(bench.slice(rw - 200, rw), /REX_SESSION[\s\S]*HERDR_ENV/, 'rw probe lost its Rex/herdr gate');
+  assert.ok(bench.includes(`fish -c "rw --review '$WT_BRANCH'"`), 'rw lost the same-repo branch form');
+  assert.ok(bench.includes('fish -c "rw --review inquest/<N> $SHA"'), 'rw fork form lost --review');
+  assert.ok(bench.includes(`fish -c "rw-rm '$WT_PATH'"`), 'rw archive lost rw-rm');
   // herdr must pin the worktree path, or it lands under ~/.herdr.
   assert.match(bench, /herdr worktree create[\s\S]{0,200}--path "\$MAIN_ROOT\/\.claude\/worktrees/,
     'herdr create lost --path');
@@ -176,6 +183,9 @@ test('inquest hands off to the worktree agent, with a fallback', () => {
   assert.ok(skill.includes('## Handoff'), 'inquest lost the Handoff section');
   assert.ok(skill.includes('herdr agent prompt "$AGENT_PANE"'), 'handoff lost the agent prompt');
   assert.ok(skill.includes('supacode tab new -w "$WT_ID"'), 'handoff lost the supacode tab');
+  // A bare -b resolves inside the caller's Rex session, so -s goes with it.
+  assert.ok(skill.includes('rex send     -s "$WT_ID" -b "$AGENT_PANE"'), 'handoff lost the scoped rex send');
+  assert.ok(skill.includes('rex send-key -s "$WT_ID" -b "$AGENT_PANE" enter'), 'handoff lost the rex enter');
   assert.ok(skill.indexOf('## Handoff') < skill.indexOf('## Execution contract'),
     'handoff must run before the todos are created');
   assert.ok(/Fallback[\s\S]{0,300}cd "\$WT_PATH" && claude '\/occam:inquest/.test(skill),

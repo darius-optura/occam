@@ -61,6 +61,27 @@ herdr agent prompt "$AGENT_PANE" "/occam:inquest <N> <every other flag given>" \
   --wait --until working --timeout 15000
 ```
 
+**rex** — `BACKEND=rw` and `bench` printed an `AGENT_PANE`: the worktree's
+Rex session has a claude block. Wait until the Claude prompt shows (claude
+can still be starting), then type the prompt and press enter. Always pass
+`-s` with `-b`; a bare `-b` resolves inside this session and fails.
+
+Claude's prompt is a `❯` line right under a `─` rule. A bare `❯` is not
+enough: starship's fish prompt uses it too, and a prompt typed there runs
+in fish:
+
+```bash
+for _ in $(seq 60); do
+  rex capture -s "$WT_ID" -b "$AGENT_PANE" --trim \
+    | awk '/^─/{r=NR} /^❯/ && r==NR-1{f=1} END{exit !f}' && break
+  sleep 2
+done
+rex send     -s "$WT_ID" -b "$AGENT_PANE" "/occam:inquest <N> <every other flag given>"
+rex send-key -s "$WT_ID" -b "$AGENT_PANE" enter
+```
+
+No Claude prompt after the loop → the handoff failed; take the Fallback below.
+
 **supacode** — `BACKEND=supacode` and `bench` printed a `WT_ID`. Open a tab
 in the worktree that starts claude with the prompt. Capture the tab ID in
 the same Bash call:
@@ -70,11 +91,11 @@ TAB_ID=$(supacode tab new -w "$WT_ID" --title "inquest-<N>" --background \
   -i "claude '/occam:inquest <N> <every other flag given>'")
 ```
 
-The handoff succeeds → print `handed off: PR #<N> → <pane $AGENT_PANE | tab
-$TAB_ID> ($WT_PATH)` and stop. That session runs every phase below; this one
+The handoff succeeds → print `handed off: PR #<N> → <pane $AGENT_PANE | block
+$AGENT_PANE | tab $TAB_ID> ($WT_PATH)` and stop. That session runs every phase below; this one
 runs none. Do not create the todos here.
 
-Fallback — no herdr server and no supacode, the `git` backend, or a handoff
+Fallback — no herdr or Rex agent and no supacode, the `git` backend, or a handoff
 command fails → print why in one line, then print the command that
 continues the review in the worktree, and stop:
 
@@ -468,7 +489,8 @@ flags every time; the script ignores an empty one:
 LOG="$MAIN_ROOT/.claude/worktrees/.inquest-watch-<N>.log"
 nohup sh "$SKILL_DIR/watch.sh" --repo "$OWNER/$REPO" --pr <N> --sha "$HEAD_SHA" \
   --path "$(git rev-parse --show-toplevel)" \
-  --pane "${HERDR_PANE_ID:-}" --wt-id "${SUPACODE_WORKTREE_ID:-}" > "$LOG" 2>&1 &
+  --pane "${HERDR_PANE_ID:-}" --wt-id "${SUPACODE_WORKTREE_ID:-}" \
+  --rex-session "${REX_SESSION:-}" --rex-block "${REX_BLOCK:-}" > "$LOG" 2>&1 &
 PID=$!
 tmp=$(mktemp)
 jq --arg n "<N>" --argjson pid "$PID" --argjson r "$ROUND" --arg sha "$HEAD_SHA" \
@@ -476,7 +498,7 @@ jq --arg n "<N>" --argjson pid "$PID" --argjson r "$ROUND" --arg sha "$HEAD_SHA"
 echo "watch: round $ROUND, pid $PID, log $LOG"
 ```
 
-With no pane and no supacode worktree, the watcher sends a macOS
+With no pane, no Rex block and no supacode worktree, the watcher sends a macOS
 notification and writes the command to continue into its log. It exits
 after one trigger, and when the PR is merged or closed, or the worktree is
 gone.

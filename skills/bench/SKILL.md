@@ -1,8 +1,8 @@
 ---
 name: bench
 description: >-
-  Provision or archive an isolated git worktree for a GitHub PR, through the hw fish function,
-  Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in
+  Provision or archive an isolated git worktree for a GitHub PR, through the rw (Rex) or hw (herdr)
+  fish function, Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in
   isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions;
   `/bench --archive <N>` archives.
 ---
@@ -35,10 +35,18 @@ Resolve `BACKEND` first. Do not assume a workspace manager is present.
 `hw` is a fish function (not on PATH), so probe it through fish. It wraps
 herdr and does more than a worktree — it runs the repo's `.herdr/setup.sh`
 (deps, database, doc symlinks) and lays out the workspace — so it wins over
-bare herdr whenever both are present:
+bare herdr whenever both are present.
+
+`rw` is the Rex port of `hw`: the same worktree path and bootstrap, then a
+Rex session labelled with the branch. It wins only inside Rex
+(`REX_SESSION` set). `HERDR_ENV=1` means herdr runs inside that Rex block, so
+herdr is the inner layer and `hw` keeps priority:
 
 ```bash
 if   [ -n "${BENCH_BACKEND:-}" ];          then BACKEND="$BENCH_BACKEND"
+elif [ -n "${REX_SESSION:-}" ] && [ "${HERDR_ENV:-}" != 1 ] \
+     && command -v fish >/dev/null 2>&1 \
+     && fish -c 'type -q rw' 2>/dev/null;  then BACKEND=rw
 elif command -v fish >/dev/null 2>&1 \
      && fish -c 'type -q hw' 2>/dev/null;  then BACKEND=hw
 elif command -v supacode >/dev/null 2>&1;  then BACKEND=supacode
@@ -113,6 +121,20 @@ the archive flow must use the same one.
    create fails" below. Read `WT_PATH` and `WT_ID` back the same way as
    **herdr**.
 
+   **rw** — same arguments as **hw**, same cwd. `rw` creates the same
+   `$MAIN_ROOT/.claude/worktrees/$WT_BRANCH`, runs `.herdr/setup.sh`, and
+   opens a Rex session labelled `$WT_BRANCH` with blocks `claude` | `glance`:
+   ```bash
+   ( cd "$MAIN_ROOT" && fish -c "rw --review '$WT_BRANCH'" )      # same-repo
+   ( cd "$MAIN_ROOT" && fish -c "rw --review inquest/<N> $SHA" )  # fork
+   ```
+   Read `WT_PATH` from `git worktree list --porcelain` as in **supacode**.
+   `WT_ID` is the session ID:
+   ```bash
+   WT_ID=$(rex ls --json | jq -r --arg n "$WT_BRANCH" \
+     '.sessions[] | select(.label==$n) | .session_id' | head -n1)
+   ```
+
    For the rest of this step, `BASE_REF` is `origin/$WT_BRANCH` for a
    same-repo PR and `$SHA` for a fork.
 
@@ -178,8 +200,8 @@ the archive flow must use the same one.
 
    Leave `WT_ID` empty.
 
-   Same-repo, every backend — make sure the branch tracks the PR. `hw` and
-   git set this themselves; the other managers may not:
+   Same-repo, every backend — make sure the branch tracks the PR. `hw`, `rw`
+   and git set this themselves; the other managers may not:
    ```bash
    git -C "$WT_PATH" branch --set-upstream-to="origin/$WT_BRANCH"
    ```
@@ -194,23 +216,37 @@ the archive flow must use the same one.
 7. Persist the mapping so `--archive` (and re-runs) can find this worktree
    again — see "State file" below. Record `BACKEND` and `WT_BRANCH` with it.
 8. Find the claude agent in the worktree, if the backend started one
-   (**hw** does; the others do not):
+   (**hw** and **rw** do; the others do not):
    ```bash
+   # hw
    AGENT_PANE=$(herdr agent list 2>/dev/null | jq -r --arg p "$WT_PATH" \
      '.result.agents[]? | select(.agent=="claude" and .cwd==$p) | .pane_id' | head -n1)
+   # rw — the block labelled claude; empty WT_ID means no session, no agent
+   [ -n "$WT_ID" ] && AGENT_PANE=$(rex block ls -s "$WT_ID" --json 2>/dev/null \
+     | jq -r '.blocks[] | select(.label=="claude") | .block_id' | head -n1)
    ```
+   For **rw**, `AGENT_PANE` is a block ID. Always pass it with
+   `-s "$WT_ID"`: a bare `-b` resolves inside the caller's own
+   `REX_SESSION` and fails with "block target not found".
 9. Print `BACKEND`, `WT_BRANCH`, `WT_ID`, `WT_PATH` and `AGENT_PANE` (empty
    when there is none), so the caller can hand work to that agent or move
    into the worktree (e.g. `cd "$WT_PATH"`).
 
 ### When the backend's own create fails
 
-If `hw`, `supacode repo worktree-new` or `herdr worktree create` rejects the
-call — the worktree directory or branch already exists, or the manager
-is unreachable (`hw` needs a running herdr server) — fall back to the
+If `hw`, `rw`, `supacode repo worktree-new` or `herdr worktree create`
+rejects the call — the worktree directory or branch already exists, or the
+manager is unreachable (`hw` needs a running herdr server, `rw` a Rex
+server) — fall back to the
 **git** branch of step 5 and record
 `"backend": "git"` in the map. Say so in the output: the workspace manager
 will not know about this worktree until it next refreshes its list.
+
+`rw` can fail after the worktree exists — `setup.sh` or the Rex session
+failed. If `git worktree list --porcelain` shows `refs/heads/$WT_BRANCH` after
+the failure, keep `"backend": "rw"` with an empty `WT_ID` and no
+`AGENT_PANE`. Recording `git` would skip `teardown.sh` at archive and leave
+its database behind.
 
 Never record a backend the worktree was not actually created with. The
 archive flow trusts that field.
@@ -238,11 +274,13 @@ archive flow trusts that field.
      `branch` line and cannot be found this way.
    - **hw**, **herdr** — `herdr worktree list --cwd "$MAIN_ROOT"`, select on
      `.branch == $WT_BRANCH`, take `.path` and `.open_workspace_id`.
+   - **rw** — `WT_PATH` as for **git**; `WT_ID` from `rex ls --json` as in
+     provision step 5.
 3. If nothing resolves, stop and report: "no worktree for PR <N>" — there is
    nothing to archive.
 4. A same-repo worktree is on the PR's real branch, and the user may have
-   worked in it. Archiving deletes the checkout, and `hw-rm` also deletes
-   the branch. Check both before anything is removed:
+   worked in it. Archiving deletes the checkout, and `hw-rm` and `rw-rm`
+   also delete the branch. Check both before anything is removed:
    ```bash
    git -C "$WT_PATH" status --porcelain                       # must be empty
    git -C "$WT_PATH" rev-list --count "@{upstream}..HEAD"     # must be 0
@@ -264,6 +302,17 @@ archive flow trusts that field.
    ```
    If `hw-rm` is absent (`fish -c 'type -q hw-rm'` fails), use the **herdr**
    command below with `WT_ID`.
+
+   **rw** — `rw-rm` runs `.herdr/teardown.sh`, removes the worktree and
+   branch, and kills the Rex session as its own last step:
+   ```bash
+   ( cd "$MAIN_ROOT" && fish -c "rw-rm '$WT_PATH'" )
+   ```
+   If `rw-rm` is absent (`fish -c 'type -q rw-rm'` fails), run the **git**
+   commands below, then kill the session last — it can be the caller's own:
+   ```bash
+   [ -n "$WT_ID" ] && rex kill "$WT_ID"
+   ```
 
    **supacode**
    ```bash

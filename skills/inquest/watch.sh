@@ -3,6 +3,7 @@
 #
 # usage: watch.sh [--once] --repo OWNER/NAME --pr N --sha REVIEWED_SHA
 #                 [--path WT_PATH] [--pane HERDR_PANE] [--wt-id SUPACODE_WT]
+#                 [--rex-session REX_SESSION --rex-block REX_BLOCK]
 #
 # Ready = the author re-requested your review, or every thread inquest opened
 # is resolved and the head moved past REVIEWED_SHA. The watcher only starts
@@ -11,7 +12,7 @@
 set -u
 
 INTERVAL=${INQUEST_WATCH_INTERVAL:-600}
-ONCE=0 REPO= PR= SHA= WT= PANE= WTID=
+ONCE=0 REPO= PR= SHA= WT= PANE= WTID= RSES= RBLK=
 while [ $# -gt 0 ]; do
   case $1 in
     --once)  ONCE=1 ;;
@@ -21,12 +22,14 @@ while [ $# -gt 0 ]; do
     --path)  WT=$2; shift ;;
     --pane)  PANE=$2; shift ;;
     --wt-id) WTID=$2; shift ;;
+    --rex-session) RSES=$2; shift ;;
+    --rex-block)   RBLK=$2; shift ;;
     *) echo "watch: unknown argument $1" >&2; exit 2 ;;
   esac
   shift
 done
 if [ -z "$REPO" ] || [ -z "$PR" ] || [ -z "$SHA" ]; then
-  echo "usage: watch.sh [--once] --repo OWNER/NAME --pr N --sha SHA [--path P] [--pane ID] [--wt-id ID]" >&2
+  echo "usage: watch.sh [--once] --repo OWNER/NAME --pr N --sha SHA [--path P] [--pane ID] [--wt-id ID] [--rex-session S --rex-block B]" >&2
   exit 2
 fi
 
@@ -65,6 +68,12 @@ trigger() {
      && herdr agent wait "$PANE" --until idle >/dev/null 2>&1 \
      && herdr agent prompt "$PANE" "$prompt" >/dev/null 2>&1; then
     echo "watch: PR #$PR $1, next round sent to pane $PANE"; return
+  fi
+  # -s goes with -b: a bare -b resolves inside the watcher's own REX_SESSION.
+  if [ -n "$RSES" ] && [ -n "$RBLK" ] \
+     && rex send -s "$RSES" -b "$RBLK" "$prompt" >/dev/null 2>&1 \
+     && rex send-key -s "$RSES" -b "$RBLK" enter >/dev/null 2>&1; then
+    echo "watch: PR #$PR $1, next round sent to rex block $RBLK"; return
   fi
   if [ -n "$WTID" ] \
      && supacode tab new -w "$WTID" --title "inquest-$PR" --background \
