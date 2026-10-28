@@ -28,3 +28,12 @@ keeps one.
 ## 2026-10-26 — Razor does not push to the main line
 Why: ub-mode ends with a push to main. Occam works through branches and pull
 requests, and `ledger` owns commits and PR bodies.
+
+## 2026-10-28 — bench prefers `rw` inside Rex, `hw` inside herdr
+Why: `rw` is the Rex port of `hw` (same worktree path, same `.herdr/setup.sh`
+and `teardown.sh`), so the multiplexer the user is in picks the backend.
+`REX_SESSION` set selects `rw`; `HERDR_ENV=1` keeps `hw` first, because herdr
+can run inside a Rex block and is then the inner layer. The handoff targets
+the session's block labelled `claude`, always as `-s <session> -b <block>`.
+Rejected: probing `rw` outside Rex — it needs a Rex server, and a teammate
+with the function but no Rex running would fail at provision.
