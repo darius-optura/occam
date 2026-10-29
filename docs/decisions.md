@@ -37,3 +37,11 @@ can run inside a Rex block and is then the inner layer. The handoff targets
 the session's block labelled `claude`, always as `-s <session> -b <block>`.
 Rejected: probing `rw` outside Rex — it needs a Rex server, and a teammate
 with the function but no Rex running would fail at provision.
+
+## 2026-10-29 — Razor hooks inject a digest, not the full SKILL.md
+Why: Claude Code shows only a 2 KB preview of hook output over 10 KB. The
+13 KB SKILL.md lost BUILD at that cut, so sessions, compactions, and
+subagents never saw the build rules. `skills/razor/digest.md` stays under the
+limit and names the path to the full rules.
+Rejected: trimming SKILL.md under 10 KB — the WRITE and Auto-Clarity rules
+need the room; a memory file — it loads in one project only.

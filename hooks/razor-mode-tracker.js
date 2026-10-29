@@ -63,7 +63,10 @@ process.stdin.on('end', () => {
             "Drop articles/filler/pleasantries/hedging. Fragments OK. " +
             "Write in ASD-STE100 Simplified Technical English: one word one meaning, " +
             "short common verbs, active voice, one instruction per sentence, max 20 words. " +
-            "Code/commits/security: write normal."
+            "Code/commits/security: write normal. " +
+            "BUILD, for plans and code: YAGNI ladder — skip what is not needed, then stdlib, " +
+            "native platform, installed dependency, one line. Fewest files, shortest diff. " +
+            "One check per non-trivial logic, written first."
         }
       }));
     }

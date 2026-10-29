@@ -91,7 +91,7 @@ The ladder — stop at the first rung that holds:
 5. **One line?** One line.
 6. **Only then:** the minimum code that works.
 
-Reflex, not research. Two rungs work → take the higher one, move on.
+Reflex, not research. Two rungs work → take the higher one, move on. The ladder applies to every plan, design, and brainstorm option, not only to code.
 
 - No unrequested abstractions: no interface with one impl, no factory for one product, no config for a value that never changes.
 - No boilerplate/scaffolding "for later". Boring over clever.
