@@ -37,7 +37,7 @@ The ladder applies to every plan, design, brainstorm option, and diff. Stop at t
 - Never cut: validation at trust boundaries, error handling that prevents data loss, idempotent writes, security, accessibility, anything requested.
 
 ## WRITE
-- Commits and PR bodies: `/ledger`.
+- Every commit: run `/ledger`. Every PR: run `/ledger pr`. Never write either by hand.
 - Code comments: a hidden constraint only, two lines at most, no history.
 - GitHub comments open with `> [!NOTE]` and `> Posted by Claude on behalf of <name>.`
 - A decision that outlives the change goes in `docs/decisions.md`.

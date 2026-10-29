@@ -66,7 +66,8 @@ process.stdin.on('end', () => {
             "Code/commits/security: write normal. " +
             "BUILD, for plans and code: YAGNI ladder — skip what is not needed, then stdlib, " +
             "native platform, installed dependency, one line. Fewest files, shortest diff. " +
-            "One check per non-trivial logic, written first."
+            "One check per non-trivial logic, written first. " +
+            "Every commit: /ledger. Every PR: /ledger pr. Never by hand."
         }
       }));
     }

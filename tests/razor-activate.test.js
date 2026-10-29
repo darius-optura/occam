@@ -19,7 +19,7 @@ function run(script, { args = [], env = {}, input = '' } = {}) {
   return r.stdout;
 }
 
-const BUILD = ['YAGNI', 'Stdlib', 'Native platform', 'Fewest files', 'ONE runnable check', 'brainstorm'];
+const BUILD = ['YAGNI', 'Stdlib', 'Native platform', 'Fewest files', 'ONE runnable check', 'brainstorm', '/ledger pr'];
 
 test('SessionStart output stays under the 10 KB Claude Code shows in full', () => {
   const out = run('razor-activate.js', { env: { RAZOR_DEFAULT_MODE: 'on' } });
@@ -56,7 +56,7 @@ test('the per-prompt reminder carries a BUILD line', () => {
   fs.writeFileSync(path.join(C, '.razor-active'), 'on');
   const out = JSON.parse(run('razor-mode-tracker.js', { env: { CLAUDE_CONFIG_DIR: C }, input: '{"prompt":"hi"}' }));
   const ctx = out.hookSpecificOutput.additionalContext;
-  for (const rule of ['BUILD', 'YAGNI', 'stdlib', 'Fewest files', 'One check']) assert.ok(ctx.includes(rule));
+  for (const rule of ['BUILD', 'YAGNI', 'stdlib', 'Fewest files', 'One check', '/ledger pr']) assert.ok(ctx.includes(rule));
 });
 
 test('hooks.json re-injects after compact and clear, and reaches subagents', () => {

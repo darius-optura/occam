@@ -116,8 +116,8 @@ Code output pattern: `[code] → skipped: [X], add when [Y].`
 
 Text that leaves the session. Full sentences with articles, still STE. Imperative mood.
 
-**Commits and PR bodies** follow `ledger`. Run `/ledger` to commit or `/ledger pr` to write
-the PR; read `${CLAUDE_PLUGIN_ROOT}/skills/ledger/SKILL.md` when you write one by hand.
+**Commits and PR bodies** go through `ledger`, every time. Run `/ledger` to commit and
+`/ledger pr` to write the PR. Never write either by hand.
 
 **Review comment or reply.** Finding, evidence, fix. One comment per finding. Answer first.
 
