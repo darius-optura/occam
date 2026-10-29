@@ -11,14 +11,16 @@ plain Node, one script is POSIX shell.
   plugin.json        identity + version
   marketplace.json   marketplace + the same version, twice
 skills/              razor, scrutiny, inquest, bench
+  razor/digest.md    what the hooks inject; SKILL.md holds the full rules
 hooks/
-  hooks.json         two events, paths via ${CLAUDE_PLUGIN_ROOT}
+  hooks.json         three events, paths via ${CLAUDE_PLUGIN_ROOT}
   razor-config.js    on/off resolution, flag file access
-  razor-activate.js  SessionStart
+  razor-activate.js  SessionStart, and SubagentStart with `subagent`
   razor-mode-tracker.js  UserPromptSubmit
   razor-statusline.sh    [RAZOR] badge
 scripts/install-statusline.sh
 tests/razor-config.test.js
+tests/razor-activate.test.js
 tests/inquest-watch.test.js
 ```
 
@@ -101,9 +103,17 @@ them the hooks read and write your real state.
 Break one of these and the failure shows up at review time, not install time.
 
 **`hooks/` and `skills/` must stay siblings.** `razor-activate.js` reads the
-skill body at `path.join(__dirname, '..', 'skills', 'razor', 'SKILL.md')`.
+digest at `path.join(__dirname, '..', 'skills', 'razor', 'digest.md')`.
 Moving either directory breaks it silently — the hook falls back to printing
 the banner alone.
+
+**Razor injects the digest, never the full SKILL.md.** Claude Code shows the
+model only a 2 KB preview of hook output over 10 KB, and SKILL.md is past
+that. `razor-activate.js` prints `skills/razor/digest.md` plus the path to
+SKILL.md at startup, resume, clear, and compact, and as SubagentStart context.
+`compact` passes `keep`, so a session-only `/razor` survives. A rule that
+must reach every session goes in the digest too; `tests/razor-activate.test.js`
+holds the size limit and the BUILD rules.
 
 **Razor stays off by default.** `isEnabledByDefault()` returns `false` unless
 `RAZOR_DEFAULT_MODE=on` or the config file says `{"enabled": true}`. A plugin
