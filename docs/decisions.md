@@ -52,3 +52,12 @@ carries the full SKILL.md with no 10 KB cut, so a brainstorm, grill, plan, or
 review starts from the whole rule set.
 Rejected for now: a `PreToolUse` hook on the Skill tool that forces the load —
 more code; add it when a session shows the digest line is not enough.
+
+## 2026-10-30 — A PreToolUse gate forces the razor skill before planning and review skills
+Why: a session obeyed the superpowers "process skills first" rule, started
+brainstorming, and skipped the digest line that names `occam:razor`. A deny
+from the gate does not depend on the model choosing between two rules.
+Reverses: "The digest tells the session to load the full razor skill" — the
+line stays, the gate enforces it.
+Rejected: injecting the full SKILL.md at session start — Claude Code cuts
+hook output over 10 KB to a 2 KB preview.
