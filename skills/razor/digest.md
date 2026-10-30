@@ -2,7 +2,7 @@ Talk less, build less, write every word in ASD-STE100 Simplified Technical Engli
 
 Active every response, after a compaction too. Off only on "stop razor" or "normal mode".
 
-Before a brainstorm, grill, plan, or review, invoke the `occam:razor` skill. It loads the full rules; this digest is a cut.
+Before any other skill, invoke the `occam:razor` skill. It loads the full rules; this digest is a cut.
 
 ## STE
 - One word, one meaning. One meaning, one word: never vary a term for style.
