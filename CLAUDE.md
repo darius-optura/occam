@@ -13,14 +13,16 @@ plain Node, one script is POSIX shell.
 skills/              razor, scrutiny, inquest, bench
   razor/digest.md    what the hooks inject; SKILL.md holds the full rules
 hooks/
-  hooks.json         three events, paths via ${CLAUDE_PLUGIN_ROOT}
+  hooks.json         four events, paths via ${CLAUDE_PLUGIN_ROOT}
   razor-config.js    on/off resolution, flag file access
   razor-activate.js  SessionStart, and SubagentStart with `subagent`
   razor-mode-tracker.js  UserPromptSubmit
+  razor-skill-gate.js    PreToolUse on Skill: razor loads before planning
   razor-statusline.sh    [RAZOR] badge
 scripts/install-statusline.sh
 tests/razor-config.test.js
 tests/razor-activate.test.js
+tests/razor-skill-gate.test.js
 tests/inquest-watch.test.js
 ```
 
@@ -114,6 +116,12 @@ SKILL.md at startup, resume, clear, and compact, and as SubagentStart context.
 `compact` passes `keep`, so a session-only `/razor` survives. A rule that
 must reach every session goes in the digest too; `tests/razor-activate.test.js`
 holds the size limit and the BUILD rules.
+
+**A planning or review skill waits for the full razor skill.** The digest
+line alone lost to the superpowers "process skills first" rule. While razor
+is on, `razor-skill-gate.js` denies a Skill call whose name matches
+`brainstorm|plan|grill|review|scrutiny|inquest` until the transcript, after
+its last compaction, shows `occam:razor` loaded. It fails open on any error.
 
 **Razor stays off by default.** `isEnabledByDefault()` returns `false` unless
 `RAZOR_DEFAULT_MODE=on` or the config file says `{"enabled": true}`. A plugin
