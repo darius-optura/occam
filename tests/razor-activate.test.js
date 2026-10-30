@@ -20,7 +20,7 @@ function run(script, { args = [], env = {}, input = '' } = {}) {
 }
 
 const BUILD = ['YAGNI', 'Stdlib', 'Native platform', 'Fewest files', 'ONE runnable check', 'brainstorm', '/ledger pr',
-               'Before a brainstorm, grill, plan, or review, invoke the `occam:razor` skill'];
+               'Before any other skill, invoke the `occam:razor` skill'];
 
 test('SessionStart output stays under the 10 KB Claude Code shows in full', () => {
   const out = run('razor-activate.js', { env: { RAZOR_DEFAULT_MODE: 'on' } });

@@ -1,5 +1,5 @@
-// The PreToolUse gate on the Skill tool. A planning or review skill must wait
-// until the full razor skill is in context.
+// The PreToolUse gate on the Skill tool. Every skill but razor must wait until
+// the full razor skill is in context.
 const { test } = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -34,9 +34,9 @@ test('a brainstorm without razor in context is denied with the fix', () => {
   assert.match(out.permissionDecisionReason, /occam:razor/);
 });
 
-test('every planning and review skill is gated', () => {
+test('every skill but razor is gated, a bug fix too', () => {
   for (const s of ['superpowers:writing-plans', 'mattpocock-skills:grilling', 'occam:scrutiny',
-                   'occam:inquest', 'code-review:code-review']) {
+                   'superpowers:systematic-debugging', 'mattpocock-skills:tdd', 'occam:ledger']) {
     assert.strictEqual(gate(s, [])?.permissionDecision, 'deny', s);
   }
 });
@@ -51,9 +51,9 @@ test('a razor load before the last compaction does not count', () => {
   assert.strictEqual(out.permissionDecision, 'deny');
 });
 
-test('other skills, razor off, and a missing transcript pass', () => {
-  assert.strictEqual(gate('occam:ledger', []), null);
+test('razor itself, razor off, and a missing transcript pass', () => {
   assert.strictEqual(gate('occam:razor', []), null);
+  assert.strictEqual(gate('razor', []), null);
   assert.strictEqual(gate('superpowers:brainstorming', [], { on: false }), null);
   const r = spawnSync('node', [path.join(root, 'hooks', 'razor-skill-gate.js')], {
     encoding: 'utf8', input: '{"tool_name":"Skill","tool_input":{"skill":"superpowers:brainstorming"},"transcript_path":"/nope"}',

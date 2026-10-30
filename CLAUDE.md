@@ -17,7 +17,7 @@ hooks/
   razor-config.js    on/off resolution, flag file access
   razor-activate.js  SessionStart, and SubagentStart with `subagent`
   razor-mode-tracker.js  UserPromptSubmit
-  razor-skill-gate.js    PreToolUse on Skill: razor loads before planning
+  razor-skill-gate.js    PreToolUse on Skill: razor loads before any skill
   razor-statusline.sh    [RAZOR] badge
 scripts/install-statusline.sh
 tests/razor-config.test.js
@@ -117,11 +117,12 @@ SKILL.md at startup, resume, clear, and compact, and as SubagentStart context.
 must reach every session goes in the digest too; `tests/razor-activate.test.js`
 holds the size limit and the BUILD rules.
 
-**A planning or review skill waits for the full razor skill.** The digest
-line alone lost to the superpowers "process skills first" rule. While razor
-is on, `razor-skill-gate.js` denies a Skill call whose name matches
-`brainstorm|plan|grill|review|scrutiny|inquest` until the transcript, after
-its last compaction, shows `occam:razor` loaded. It fails open on any error.
+**Every skill waits for the full razor skill.** The digest line alone lost to
+the superpowers "process skills first" rule, and a list of planning skills
+missed a bug fix that still designed a plan. While razor is on,
+`razor-skill-gate.js` denies every Skill call but `occam:razor` until the
+transcript, after its last compaction, shows razor loaded. It fails open on
+any error.
 
 **Razor stays off by default.** `isEnabledByDefault()` returns `false` unless
 `RAZOR_DEFAULT_MODE=on` or the config file says `{"enabled": true}`. A plugin

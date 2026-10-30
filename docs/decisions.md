@@ -61,3 +61,11 @@ Reverses: "The digest tells the session to load the full razor skill" — the
 line stays, the gate enforces it.
 Rejected: injecting the full SKILL.md at session start — Claude Code cuts
 hook output over 10 KB to a 2 KB preview.
+
+## 2026-10-30 — The razor gate covers every skill, not a list of planning skills
+Why: a session loaded `systematic-debugging` for a bug, then designed a
+rename map and a server migration. That is a plan, but the name matched no
+entry in the list. Any skill can lead to design work.
+Reverses: "A PreToolUse gate forces the razor skill before planning and
+review skills" — the gate stays, the list goes.
+Cost: the first skill call in a session is denied once.
