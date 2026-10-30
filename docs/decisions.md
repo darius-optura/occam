@@ -45,3 +45,10 @@ subagents never saw the build rules. `skills/razor/digest.md` stays under the
 limit and names the path to the full rules.
 Rejected: trimming SKILL.md under 10 KB — the WRITE and Auto-Clarity rules
 need the room; a memory file — it loads in one project only.
+
+## 2026-10-30 — The digest tells the session to load the full razor skill before planning work
+Why: the digest cuts the reasons and examples behind BUILD. A skill load
+carries the full SKILL.md with no 10 KB cut, so a brainstorm, grill, plan, or
+review starts from the whole rule set.
+Rejected for now: a `PreToolUse` hook on the Skill tool that forces the load —
+more code; add it when a session shows the digest line is not enough.
