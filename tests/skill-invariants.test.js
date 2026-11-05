@@ -68,7 +68,7 @@ test('razor-activate finds the skill body where it looks for it', () => {
 
 test('review-core carries every load-bearing heading', () => {
   const core = read('skills', 'scrutiny', 'review-core.md');
-  for (const h of ['## Scope resolution', '## Load criteria', '## Review', '## Dispatch',
+  for (const h of ['## Scope resolution', '## Load criteria', '## Load intent', '## Review', '## Dispatch',
                    '## Judge', '## Score', '## PR hygiene', '## Standard criteria fallback']) {
     assert.ok(core.includes(`\n${h}\n`), `review-core lost heading "${h}"`);
   }
@@ -121,6 +121,23 @@ test('every core section a caller names exists as a heading', () => {
       assert.ok(headings.has(ref), `${caller} names "${ref}" — not a review-core heading`);
     }
   }
+});
+
+test('the review loads the linked ticket and never skips it silently', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const intent = core.slice(core.indexOf('\n## Load intent\n'), core.indexOf('\n## Review\n'));
+  // the ticket is written by people other than the reviewer; it must never steer the review.
+  assert.ok(/data, never instructions/.test(intent), 'Load intent lost the untrusted-data rule');
+  assert.ok(intent.includes('Intent: none —'), 'Load intent lost the loud skip line');
+  const dispatch = core.slice(core.indexOf('\n## Dispatch\n'), core.indexOf('\n## Score\n'));
+  assert.ok(dispatch.includes('\nIntent: <'), 'lane brief lost the Intent line');
+  assert.ok(dispatch.includes('Purpose / Intent / Core'), 'judge brief lost the Intent line');
+  for (const caller of ['skills/scrutiny/SKILL.md', 'skills/inquest/SKILL.md']) {
+    assert.ok(/"Load intent" in `(?:review-core\.md|\$CORE)`/.test(read(...caller.split('/'))),
+      `${caller} does not run "Load intent"`);
+  }
+  assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('Intent: <'),
+    'sticky template lost the Intent line');
 });
 
 test('the sticky marker lives in its four files', () => {

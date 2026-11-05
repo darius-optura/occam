@@ -269,8 +269,12 @@ of REVIEW.md, the CLAUDE.md chain and the stack checklist
 `BASE_SHA` and the PR title for the brief. Do not read the diff beyond
 `--stat` — the lanes read it.
 
+Run "Load intent" in `$CORE` with the PR body and the branch name. Record
+its `Intent:` line for the sticky.
+
 Then run "Dispatch" in `$CORE`: fill the lane brief with the worktree path,
-`git diff <BASE_SHA>...<HEAD_SHA>`, the PR title, the absolute `$CORE` path
+`git diff <BASE_SHA>...<HEAD_SHA>`, the PR title, the intent file path or
+`none — <reason>`, the absolute `$CORE` path
 and the criteria paths; launch lanes A, B, C and D in one message as fresh
 `general-purpose` subagents (lane D on `code-simplifier` when listed, per
 "Dispatch"), never `fork`. Do not wait — continue to
@@ -448,7 +452,8 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   in-session fallback from `$CORE` "Dispatch" is named here when it fired. Security or hygiene get a sentence ONLY when
   something failed or deserves note — no pass/fail tables, no empty sections,
   no boilerplate.
-- Footer: `Head`/`Base` line, `Codex:` + `CI:` line, `Verdict:` line — exact
+- Footer: `Head`/`Base` line, `Codex:` + `CI:` line, `Intent:` line, `Verdict:`
+  line — exact
   shapes from the template. The `Verdict:` value derives from the FINAL event,
   not the score.
 
