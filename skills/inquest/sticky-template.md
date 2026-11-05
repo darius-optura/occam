@@ -13,4 +13,5 @@
 
 Head `<HEAD_SHA>` · Base `<BASE_BRANCH>` @ `<BASE_SHA>`
 Codex: <ran at `CODEX_HEAD_SHA` — verdict | pasted from chat at `CODEX_HEAD_SHA` — verdict | skipped — codex CLI not installed | skipped — manual codex declined by user | not run — no base ref for this scope | invalid — could not check out the PR head> · CI: <one line: states + blocking checks>
+Intent: <ticket IDs + linked doc count, e.g. ENG-123 + 2 docs | none — no Linear ID found | none — Linear tools not available | none — <ID> not found in Linear>
 Verdict: **<Approve | Request changes | Comment (not approved)>** — <blocking reason, or "no blockers">

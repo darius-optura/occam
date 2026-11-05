@@ -187,7 +187,7 @@ Renaming a heading there breaks a caller with no error. The load-bearing
 headings:
 
 ```
-Scope resolution · Load criteria · Review · Dispatch · Judge
+Scope resolution · Load criteria · Load intent · Review · Dispatch · Judge
 Score · PR hygiene · Standard criteria fallback
 ```
 

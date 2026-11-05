@@ -22,6 +22,7 @@ anchors=(
   "### Merge confidence: "
   "Head \`"
   "Codex: "
+  "Intent: "
   "Verdict: "
 )
 last=0
@@ -55,7 +56,7 @@ grep -qE '^Verdict: \*\*(Approve|Request changes|Comment \(not approved\))\*\*' 
 placeholders=(
   '<N>' '<NAME>' '<HEAD_SHA>' '<BASE_BRANCH>' '<BASE_SHA>' 'CODEX_HEAD_SHA'
   '<Assessment prose' '<Findings, only when' '<One sentence' '<ran at'
-  '<one line' '<Approve | Request changes' '<blocking reason'
+  '<one line' '<ticket IDs' '<Approve | Request changes' '<blocking reason'
 )
 for p in "${placeholders[@]}"; do
   grep -qF "$p" "$f" && err "unfilled template placeholder remains: $p"
