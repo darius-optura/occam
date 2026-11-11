@@ -1,0 +1,16 @@
+{
+  "root": "page",
+  "elements": {
+    "page": { "type": "Stack", "props": { "direction": "vertical", "gap": "md", "align": "stretch" }, "children": ["kpis", "card"] },
+    "kpis": { "type": "Grid", "props": { "columns": 3, "gap": "md" }, "children": ["k1", "k2", "k3"] },
+    "k1": { "type": "Card", "props": { "title": "p95 latency", "description": "eu-west" }, "children": ["k1v"] },
+    "k1v": { "type": "Heading", "props": { "text": "120 ms", "level": "h2" }, "children": [] },
+    "k2": { "type": "Card", "props": { "title": "Error rate", "description": "last 24 h" }, "children": ["k2v"] },
+    "k2v": { "type": "Heading", "props": { "text": "0.4 %", "level": "h2" }, "children": [] },
+    "k3": { "type": "Card", "props": { "title": "Deploys", "description": "this week" }, "children": ["k3v"] },
+    "k3v": { "type": "Heading", "props": { "text": "14", "level": "h2" }, "children": [] },
+    "card": { "type": "Card", "props": { "title": "Latency by region", "description": "p50 and p95, ms" }, "children": ["chart"] },
+    "chart": { "type": "BarChart", "props": { "x": "region", "series": [{ "key": "p50" }, { "key": "p95" }], "data": [
+      { "region": "eu", "p50": 60, "p95": 120 }, { "region": "us", "p50": 45, "p95": 90 }, { "region": "ap", "p50": 110, "p95": 210 } ] }, "children": [] }
+  }
+}

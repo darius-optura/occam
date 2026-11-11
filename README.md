@@ -24,10 +24,11 @@ claude plugin install occam@occam
 | `inquest` | Adversarial review of a GitHub PR. Inline threads, one sticky summary, approve at ≥9 or request changes. |
 | `bench` | Provisions and archives an isolated worktree for a PR. |
 | `proof` | Records a proof-of-feature mp4 by driving a real Chrome through a PR or branch with agent-browser. |
+| `lens` | Draws a chart, a UI prototype, a layout or a flow as a picture inline in the chat, from a json-render spec, HTML or Mermaid. |
 | `ledger` | Commits the staged changes with a conventional message, and writes a bullet-only PR description plus one linked comment with the most impactful lines, an optional shape diagram, and the main flows. |
 
 Claude Code namespaces a plugin's skills, so both `/razor` and `/occam:razor`
-work. The same holds for the other five.
+work. The same holds for the other six.
 
 `inquest` reads named sections of `scrutiny` rather than duplicating them, and
 delegates worktree lifecycle to `bench`. The three ship together for that
@@ -195,6 +196,34 @@ disables. Each user's `profile` is an `agent-browser auth save` name; `role`
 is what a story outline calls that actor. `loom` is optional. `--init` writes
 this file for you; it asks each question once and derives the profile names.
 
+## lens draws the picture in the chat
+
+`lens` replaces a table of numbers or a mockup in a browser tab with a
+picture under the tool call. Claude sends a json-render spec (shadcn
+components and Recharts charts), custom HTML, or Mermaid. A local page
+renders it, agent-browser takes the screenshot, and an occam mod draws the
+PNG inline with the kitty graphics protocol. Claude gets the same picture
+back and redraws one that is blank, clipped or wrong. razor sends a result
+through `lens` when a picture reads better, in the main session only.
+
+```bash
+/lens --setup        # checks agent-browser and the terminal setting
+```
+
+Claude Code draws pictures only in terminals it knows (Ghostty, kitty). In
+Rex and other kitty-graphics terminals, add this to `~/.claude/settings.json`
+and restart:
+
+```json
+{ "env": { "CLAUDE_CODE_FORCE_TERMINAL_IMAGES": "1" } }
+```
+
+Where no picture can show, the tool says `not shown inline` and Claude
+writes the content as text too. The page loads its libraries from esm.sh and
+jsDelivr at pinned versions, so a picture needs the network. A CSP keeps the
+source data inside the browser. The page follows your light or dark theme
+and, when Claude passes them, the repo's design tokens.
+
 ## ledger writes what leaves the session
 
 `/ledger` reads the index, picks a conventional type and scope from the
@@ -249,6 +278,9 @@ Commit messages and PR descriptions never carry a generated-with footer or
 a session link.
 
 ## Optional dependencies
+
+`lens` needs `agent-browser`, the same one `proof` uses, and the network
+for its CDN libraries.
 
 `proof` needs `agent-browser` and Chrome for Testing, which `/proof --setup`
 installs, and `ffmpeg` on `PATH`, which it does not. `--loom` needs a Loom

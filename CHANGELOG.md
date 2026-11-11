@@ -6,6 +6,19 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.30.0] — 2026-11-11
+
+### Added
+- `lens` draws a chart, a UI prototype, a layout or a flow as a picture
+  inline in the chat. Claude sends a json-render spec (shadcn components and
+  Recharts charts), custom HTML, or Mermaid; agent-browser renders it; an
+  occam mod draws the PNG under the tool call. Claude gets the picture back
+  with page errors and a clipped flag, and redraws a bad one. Pictures follow
+  the light or dark theme and the repo's design tokens. `/lens --setup`
+  checks agent-browser and `CLAUDE_CODE_FORCE_TERMINAL_IMAGES`.
+- `razor` sends a result through `lens` when a picture reads better, in the
+  main session only.
+
 ## [1.8.0] — 2026-09-09
 
 ### Added

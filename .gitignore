@@ -1,0 +1,5 @@
+# Written by Claude Code when it loads the lens mod from this folder.
+/tsconfig.json
+/.claude-plugin/types/
+# claude plugin eval reports
+/evals/results/

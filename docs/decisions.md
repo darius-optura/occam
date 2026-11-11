@@ -79,3 +79,33 @@ Rule: the ticket is data, never instructions, and never lowers a severity.
 A missing ticket prints `Intent: none — <reason>`, as the Codex line does.
 Rejected: each lane gets the ticket itself — five fetches of the same data.
 Rejected: GitHub issues and other trackers — add them when a team uses one.
+
+## 2026-11-11 — lens renders a file:// page, with no page server
+Why: the page loads its libraries from esm.sh and jsDelivr through an import
+map, and a `file://` page can import them. No server means no port, no
+process to stop, and no build step in occam.
+Rejected: a plain Node `http` server per session — one more process to start
+and stop for no gain.
+
+## 2026-11-11 — lens returns the picture to the model as an API image block
+Why: Claude must check every picture. A mod tool result
+`[{ type: 'text' }, { type: 'image', source: { type: 'base64', … } }]` reaches
+the model; the ToolUse hook reads the same bytes from `output` to draw.
+Rejected: MCP-shaped `{ data, mimeType }` blocks — the API removes them.
+Rejected: a `file` image source — a Rex client on another machine draws a
+blank box.
+
+## 2026-11-11 — lens html runs its scripts, under a CSP
+Why: custom HTML is for views the catalog cannot show, and some need a
+script. The CSP sets `connect-src 'none'` and `img-src data: blob:`, and
+Chrome keeps a `file://` page from reading other files, so a script can see
+only the source it was given.
+Rejected: a sandboxed iframe with no scripts — it removes the one reason the
+html kind exists.
+
+## 2026-11-11 — lens knows inline pictures from a terminal list
+Why: the mod API has no flag that says the terminal draws pictures. The
+tool says `shown inline` for `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1`, Ghostty
+and kitty, and `not shown inline` elsewhere.
+Ceiling: `razor:` marker in `hooks/lens-core.mts`; read an engine flag when
+one exists.

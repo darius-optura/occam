@@ -2,7 +2,8 @@
 
 This repo is a Claude Code plugin **and** its own single-plugin marketplace.
 There is no build step and no dependencies. Skills are Markdown, hooks are
-plain Node, one script is POSIX shell.
+plain Node, one script is POSIX shell. The `lens` mod module is
+TypeScript that Claude Code loads as is.
 
 ## Layout
 
@@ -10,10 +11,14 @@ plain Node, one script is POSIX shell.
 .claude-plugin/
   plugin.json        identity + version
   marketplace.json   marketplace + the same version, twice
-skills/              razor, scrutiny, inquest, bench
+skills/              razor, scrutiny, inquest, bench, proof, ledger, lens
   razor/digest.md    what the hooks inject; SKILL.md holds the full rules
+  lens/page.html     the page lens renders; fixtures/ holds one source per kind
 hooks/
-  hooks.json         four events, paths via ${CLAUDE_PLUGIN_ROOT}
+  hooks.json         four command-hook events, and the lens module under "modules"
+  lens.tsx           mod: the mcp__occam__lens tool and the ToolUse picture
+  lens-core.mts      lens logic with no I/O; Node 24 strips its types for the tests
+  lens.test.tsx      `claude plugin test .`
   razor-config.js    on/off resolution, flag file access
   razor-activate.js  SessionStart, and SubagentStart with `subagent`
   razor-mode-tracker.js  UserPromptSubmit
@@ -24,6 +29,7 @@ tests/razor-config.test.js
 tests/razor-activate.test.js
 tests/razor-skill-gate.test.js
 tests/inquest-watch.test.js
+tests/lens-core.test.js
 ```
 
 There is no `commands/` directory. Skills are invoked directly, bare
@@ -68,6 +74,12 @@ node --test tests/*.test.js
 
 Use the glob. `node --test tests/` fails on this Node — it resolves the
 directory as a module.
+
+The lens mod has its own runner: `claude plugin test .` runs
+`hooks/lens.test.tsx`, and `claude plugin validate .` reads the module the
+way the engine will. To see a real picture, run `node` with
+`hooks/lens-core.mts` against a fixture in `skills/lens/fixtures/`, or start
+`claude --plugin-dir .` with `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1`.
 
 Two test layers. `tests/razor-config.test.js` unit-tests the only file with
 branching logic. `tests/skill-invariants.test.js` asserts the invariants
@@ -202,6 +214,15 @@ diff grades its own plan, so `fork` is forbidden and the orchestrator may
 not add, drop, or regrade a finding. The lanes together must own all eight
 distrust passes and all five categories; the invariants test checks the
 lane table. No Agent tool → the loud inline fallback, never a silent one.
+
+**lens draws only a finished call.** The ToolUse hook also runs while the
+input streams; an `Image` from a partial input makes the engine refuse the
+tree. The hook draws only when `isRunning` is false and `output` holds an
+image block. `hooks/lens.test.tsx` covers it.
+
+**lens stays out of subagents.** The razor rule says main session only,
+because the digest also reaches SubagentStart and nobody sees a subagent's
+chat.
 
 ## Before you release
 

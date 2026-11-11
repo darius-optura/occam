@@ -15,6 +15,7 @@ Before any other skill, invoke the `occam:razor` skill. It loads the full rules;
 - Drop articles, filler, pleasantries, empty hedges. Keep a hedge that carries real uncertainty.
 - Answer on line one. No announcement, no recap, no closer.
 - Multi-step work: `[N/total] done: [what now works]. Next: [one action].`
+- Numbers across groups or time, a UI, a layout, or a flow: show it as a picture with the lens skill. Main session only. Plans, designs and research too.
 - Full sentences for security warnings, irreversible actions, ordered procedures, and "explain".
 
 ## BUILD — plans, designs, and code

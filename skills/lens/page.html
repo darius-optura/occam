@@ -1,0 +1,162 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' https://esm.sh https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src data: blob:; connect-src 'none'">
+<script>
+  const C = /*LENS_CONFIG*/null
+  window.__lens = { errors: [], clipped: false }
+  const note = a => (a instanceof Error ? a.message : typeof a === 'string' ? a : (() => { try { return JSON.stringify(a) } catch { return String(a) } })())
+  for (const level of ['error', 'warn']) {
+    const orig = console[level]
+    console[level] = (...a) => { __lens.errors.push(a.map(note).join(' ')); orig(...a) }
+  }
+  addEventListener('error', e => __lens.errors.push(e.message || 'error'))
+  addEventListener('unhandledrejection', e => __lens.errors.push(note(e.reason)))
+  if (C.theme === 'dark') document.documentElement.classList.add('dark')
+</script>
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@19.2.0",
+    "react/": "https://esm.sh/react@19.2.0/",
+    "react-dom": "https://esm.sh/react-dom@19.2.0?external=react",
+    "react-dom/": "https://esm.sh/react-dom@19.2.0&external=react/",
+    "zod": "https://esm.sh/zod@4.1.12",
+    "zod/": "https://esm.sh/zod@4.1.12/",
+    "@json-render/core": "https://esm.sh/@json-render/core@0.22.0?external=react,react-dom,zod",
+    "@json-render/react": "https://esm.sh/@json-render/react@0.22.0?external=react,react-dom,zod",
+    "@json-render/react/schema": "https://esm.sh/@json-render/react@0.22.0/schema?external=react,react-dom,zod",
+    "@json-render/shadcn": "https://esm.sh/@json-render/shadcn@0.22.0?external=react,react-dom,zod",
+    "@json-render/shadcn/catalog": "https://esm.sh/@json-render/shadcn@0.22.0/catalog?external=react,react-dom,zod",
+    "recharts": "https://esm.sh/recharts@3.10.1?external=react,react-dom",
+    "mermaid": "https://esm.sh/mermaid@12.3.0"
+  }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.17/dist/index.global.js" integrity="sha384-rTeakyDSnM/oJarj5FPq/xPLt7Iu6UBZd++da42+cyY8b1mP+U472v6kLpgJkLHc" crossorigin="anonymous"></script>
+<style type="text/tailwindcss">
+@custom-variant dark (&:is(.dark *));
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0); --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0); --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0); --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0); --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0); --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0); --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0); --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0); --input: oklch(0.922 0 0); --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116); --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392); --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+}
+.dark {
+  --background: oklch(0.145 0 0); --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0); --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0); --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0); --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0); --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0); --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0); --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%); --input: oklch(1 0 0 / 15%); --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376); --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08); --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+}
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px); --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius); --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background); --color-foreground: var(--foreground);
+  --color-card: var(--card); --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover); --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary); --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary); --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted); --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent); --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border); --color-input: var(--input); --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1); --color-chart-2: var(--chart-2); --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4); --color-chart-5: var(--chart-5);
+}
+@layer base {
+  * { @apply border-border; }
+  html, body { @apply bg-background text-foreground; margin: 0; font-size: 14px; }
+  #lens svg { max-width: 100%; height: auto; }
+}
+/*LENS_TOKENS*/
+</style>
+</head>
+<body>
+<div id="lens"><!--LENS_HTML--></div>
+<script type="module">
+const lens = document.getElementById('lens')
+Object.assign(lens.style, { width: C.width + 'px', maxHeight: C.maxHeight + 'px', overflow: 'hidden', padding: '16px', boxSizing: 'border-box', background: 'var(--background)' })
+const frame = () => new Promise(r => requestAnimationFrame(r))
+
+async function drawSpec() {
+  const spec = JSON.parse(C.source)
+  const [React, { createRoot }, { Renderer, JSONUIProvider, defineRegistry }, { defineCatalog }, { schema }, { shadcnComponents }, { shadcnComponentDefinitions }, { z }, R] =
+    await Promise.all(['react', 'react-dom/client', '@json-render/react', '@json-render/core', '@json-render/react/schema', '@json-render/shadcn', '@json-render/shadcn/catalog', 'zod', 'recharts'].map(m => import(m)))
+  const h = React.createElement
+  const color = i => `var(--chart-${(i % 5) + 1})`
+  const axes = p => [
+    h(R.CartesianGrid, { key: 'g', vertical: false, stroke: 'var(--border)' }),
+    h(R.XAxis, { key: 'x', dataKey: p.x, stroke: 'var(--muted-foreground)', tickLine: false }),
+    h(R.YAxis, { key: 'y', stroke: 'var(--muted-foreground)', tickLine: false, width: 48 }),
+    p.series.length > 1 && h(R.Legend, { key: 'l' }),
+  ]
+  const cartesian = (Chart, Series, style) => ({ props: p }) =>
+    h(R.ResponsiveContainer, { width: '100%', height: p.height ?? 280 },
+      h(Chart, { data: p.data }, ...axes(p), ...p.series.map((s, i) =>
+        h(Series, { key: s.key, dataKey: s.key, name: s.label ?? s.key, stackId: p.stacked ? 'a' : undefined, isAnimationActive: false, ...style(color(i)) }))))
+  const charts = {
+    BarChart: cartesian(R.BarChart, R.Bar, c => ({ fill: c, radius: 4 })),
+    LineChart: cartesian(R.LineChart, R.Line, c => ({ stroke: c, strokeWidth: 2, dot: false, type: 'monotone' })),
+    AreaChart: cartesian(R.AreaChart, R.Area, c => ({ stroke: c, fill: c, fillOpacity: 0.3, type: 'monotone' })),
+    PieChart: ({ props: p }) =>
+      h(R.ResponsiveContainer, { width: '100%', height: p.height ?? 280 },
+        h(R.PieChart, null,
+          h(R.Pie, { data: p.data, dataKey: p.series[0].key, nameKey: p.x, isAnimationActive: false, label: true, stroke: 'var(--background)' },
+            p.data.map((_, i) => h(R.Cell, { key: i, fill: color(i) }))),
+          h(R.Legend))),
+  }
+  const chartProps = z.object({
+    data: z.array(z.record(z.string(), z.union([z.string(), z.number()]))),
+    x: z.string(),
+    series: z.array(z.object({ key: z.string(), label: z.string().optional() })).min(1),
+    height: z.number().optional(),
+    stacked: z.boolean().optional(),
+  })
+  const chartDefs = Object.fromEntries(Object.keys(charts).map(k => [k, { props: chartProps, description: k }]))
+  const catalog = defineCatalog(schema, { components: { ...shadcnComponentDefinitions, ...chartDefs }, actions: {} })
+  const check = catalog.validate(spec)
+  if (!check.success) for (const i of check.error.issues) __lens.errors.push(`spec ${i.path.join('.')}: ${i.message}`)
+  const { registry } = defineRegistry(catalog, { components: { ...shadcnComponents, ...charts } })
+  createRoot(lens).render(h(JSONUIProvider, { registry }, h(Renderer, { spec, registry })))
+}
+
+async function drawMermaid() {
+  const { default: mermaid } = await import('mermaid')
+  mermaid.initialize({ startOnLoad: false, theme: C.theme === 'dark' ? 'dark' : 'default', fontFamily: getComputedStyle(document.body).fontFamily })
+  const { svg } = await mermaid.render('lens-mermaid', C.source)
+  lens.innerHTML = svg
+}
+
+try {
+  if (C.kind === 'spec') await drawSpec()
+  if (C.kind === 'mermaid') await drawMermaid()
+  await document.fonts.ready
+  await frame(); await frame()
+  await new Promise(r => setTimeout(r, 100))
+} catch (e) {
+  __lens.errors.push(note(e))
+} finally {
+  __lens.clipped = lens.scrollHeight > lens.clientHeight + 1
+  document.documentElement.dataset.lens = 'ready'
+}
+</script>
+</body>
+</html>
