@@ -2,7 +2,7 @@ const { test, before } = require('node:test');
 const assert = require('node:assert');
 
 let L;
-before(async () => { L = await import('../hooks/lens-core.mjs'); });
+before(async () => { L = await import('../hooks/lens-core.mts'); });
 
 const PNG_1x1 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 

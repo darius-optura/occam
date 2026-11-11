@@ -1,4 +1,5 @@
 import type { Register } from 'claude-code'
+// The file is lens-core.mts: the engine and tsc map a .mjs import to it.
 import { batchCommands, buildPage, inlineReason, layout, parseBatch, parseInput, pngSize, resolveTheme, rowsFor, sessionName } from './lens-core.mjs'
 
 const TOOL = 'mcp__occam__lens'
