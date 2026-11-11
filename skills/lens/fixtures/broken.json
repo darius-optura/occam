@@ -1,0 +1,4 @@
+{ "root": "a", "elements": {
+  "a": { "type": "Stack", "props": { "direction": "vertical" }, "children": ["b", "c"] },
+  "b": { "type": "Sparkle", "props": {}, "children": [] },
+  "c": { "type": "BarChart", "props": { "x": "k", "series": [], "data": [] }, "children": [] } } }

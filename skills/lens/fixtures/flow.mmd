@@ -1,0 +1,9 @@
+sequenceDiagram
+    participant Claude
+    participant Mod as lens mod
+    participant AB as agent-browser
+    Claude->>Mod: mcp__occam__lens(kind, source, alt)
+    Mod->>AB: batch: viewport, media, open, wait, screenshot
+    AB-->>Mod: PNG + page errors
+    Mod-->>Claude: text + image block
+    Mod-->>Mod: ToolUse hook draws the PNG
