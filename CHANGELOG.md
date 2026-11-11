@@ -6,6 +6,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The version lives in two files and they must agree: `.claude-plugin/plugin.json`
 and `.claude-plugin/marketplace.json`.
 
+## [1.30.1] — 2026-11-11
+
+### Fixed
+- The plugin and marketplace descriptions and the README intro now name
+  `lens`. They listed only the older skills.
+
 ## [1.30.0] — 2026-11-11
 
 ### Added

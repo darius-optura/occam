@@ -6,7 +6,8 @@ Three parts of one idea. `razor` makes Claude write the fewest words and the
 fewest lines that still work. `scrutiny` and `inquest` ask whether your diff
 is the simplest correct one, and score merge confidence out of 10. `proof`
 records the feature working in a real browser, so the PR carries evidence,
-not a description.
+not a description. `lens` shows a chart, a UI or a flow as a picture in the
+chat, where a table or a paragraph would be slower to read.
 
 ## Install
 
