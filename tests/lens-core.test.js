@@ -31,6 +31,7 @@ test('parseInput takes the three kinds and refuses the rest', () => {
   assert.ok(L.parseInput({ kind: 'html', source: '', alt: 'x' }).error);
   assert.ok(L.parseInput({ kind: 'html', source: '<p>', alt: 'x'.repeat(201) }).error);
   assert.ok(L.parseInput(null).error);
+  assert.match(L.parseInput({ kind: 'spec', source: '{}', alt: 'x', tokens: ':root{}</style><script>' }).error, /tokens/);
 });
 
 test('buildPage fills the slots and cannot be closed by the source', () => {

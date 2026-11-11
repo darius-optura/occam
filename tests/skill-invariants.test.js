@@ -321,3 +321,9 @@ test('the three version fields agree', () => {
   assert.strictEqual(market.metadata.version, plugin.version);
   assert.strictEqual(market.plugins[0].version, plugin.version);
 });
+
+test('hooks.json carries the command hooks and the lens module', () => {
+  const j = JSON.parse(read('hooks', 'hooks.json'));
+  assert.deepStrictEqual(Object.keys(j.hooks), ['SessionStart', 'SubagentStart', 'PreToolUse', 'UserPromptSubmit']);
+  assert.deepStrictEqual(j.modules, ['./lens.tsx']);
+});

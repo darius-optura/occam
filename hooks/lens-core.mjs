@@ -18,7 +18,8 @@ export function parseInput(raw) {
   const source = kind === 'spec' && raw.source && typeof raw.source === 'object' ? JSON.stringify(raw.source) : raw.source;
   if (typeof source !== 'string' || !source.trim()) return { error: 'source must be a non-empty string' };
   if (typeof alt !== 'string' || !alt.trim() || alt.length > 200) return { error: 'alt must be one sentence, 1 to 200 characters' };
-  if (typeof tokens !== 'string') return { error: 'tokens must be a CSS string' };
+  // Tokens land inside a <style>; a "<" could close it.
+  if (typeof tokens !== 'string' || tokens.includes('<')) return { error: 'tokens must be a CSS string with no "<"' };
   return { kind, source, alt, tokens };
 }
 
