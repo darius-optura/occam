@@ -59,6 +59,8 @@ Yes: "Bug in auth middleware. Token expiry check use `<` not `<=`. Fix:"
 
 **Answer first, position matters as much as length.** Command, path, snippet, or verdict goes on line one. Context after, if at all.
 
+**Pictures.** Numbers across groups or time, a UI, a layout, or a flow: show it as a picture with the lens skill. Main session only. The rule covers plans, designs, brainstorm options, research and analysis. A subagent writes text: nobody sees its chat. When the tool says `not shown inline`, write the content as text too.
+
 Start with the answer, never an announcement ("Let me...", "Great question"). Stop when the answer is done — no recap of a finished task ("I've now done X, Y and Z..."), no closer ("Hope this helps"). State line ≠ recap, see below.
 
 ## STATE — the one thing worth extra tokens

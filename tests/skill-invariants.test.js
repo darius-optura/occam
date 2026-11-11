@@ -327,3 +327,17 @@ test('hooks.json carries the command hooks and the lens module', () => {
   assert.deepStrictEqual(Object.keys(j.hooks), ['SessionStart', 'SubagentStart', 'PreToolUse', 'UserPromptSubmit']);
   assert.deepStrictEqual(j.modules, ['./lens.tsx']);
 });
+
+test('lens skill names its tool, kinds and setup', () => {
+  const skill = read('skills', 'lens', 'SKILL.md');
+  assert.ok(/^---\nname: lens\n/.test(skill), 'frontmatter name');
+  for (const s of ['mcp__occam__lens', '"spec"', '"html"', '"mermaid"', '--setup', 'CLAUDE_CODE_FORCE_TERMINAL_IMAGES', 'not shown inline', 'clipped: true']) {
+    assert.ok(skill.includes(s), `lens skill lost ${s}`);
+  }
+});
+
+test('razor sends pictures through lens, main session only', () => {
+  for (const f of [['skills', 'razor', 'digest.md'], ['skills', 'razor', 'SKILL.md']]) {
+    assert.ok(/lens skill\. Main session only\./.test(read(...f)), `${f.join('/')} lost the lens rule`);
+  }
+});
