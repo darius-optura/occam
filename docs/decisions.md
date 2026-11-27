@@ -144,3 +144,13 @@ and after.
 Rejected: proving Suggestions and Nits — the cost buys no merge decision.
 Rejected: the judge runs the repros itself — one agent in series, and the
 judge would grade its own experiment.
+
+## 2026-11-27 — Review calibration lives in evals and one Lanes line
+Why: a lane that raises many findings the judge drops needs a sharper
+brief, and a scan that stops firing is a silent regression. The judge prints
+raised and kept per lane, and `evals/scrutiny-proves-deep-findings` plants
+one defect behind each new scan.
+Ceiling: the Lanes line is not stored. Append it to a log when someone will
+read the trend across runs.
+Rejected: one eval per distrust pass — eight scaffolds that mostly repeat
+`scrutiny-finds-planted-bugs`.

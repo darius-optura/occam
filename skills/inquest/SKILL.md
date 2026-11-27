@@ -386,7 +386,9 @@ PERM=$(gh api "repos/$OWNER/$REPO/collaborators/$PR_AUTHOR/permission" -q .permi
 ```
 
 Send the prover results to the judge per "Judge" in `$CORE`, step 5. Its
-second report is final.
+second report is final. Print its `Lanes:` line to the terminal, not the
+sticky: a lane that raises many findings the judge drops needs a sharper
+brief.
 
 Map `sources` to the sticky label: lanes and Codex → `(both)`; lanes only →
 `(primary)`; Codex only → `(codex)`. Add the proof state after it:

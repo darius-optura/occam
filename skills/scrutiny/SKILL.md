@@ -104,7 +104,8 @@ summary uses, so it is interchangeable with the GitHub version:
    `Reviewers: 4 lanes + judge + <n> provers, fresh subagents` — or the in-session line
    from "Dispatch" when the Agent tool was missing. Append
    `· not covered: lane <X> — <reason>` for each lane the judge marked so.
-   Then the `Intent:` line
+   Then the judge's `Lanes:` line, raised and kept per lane. Then the
+   `Intent:` line
    from "Load intent" (e.g. `Intent: ENG-123 + 2 docs`).
 3. **Summary** — what the change does and its impact.
 4. **PR Hygiene** — pass/fail checklist if a PR exists, else skipped.
