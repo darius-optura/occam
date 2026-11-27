@@ -11,7 +11,7 @@ TypeScript that Claude Code loads as is.
 .claude-plugin/
   plugin.json        identity + version
   marketplace.json   marketplace + the same version, twice
-skills/              razor, scrutiny, inquest, bench, proof, ledger, lens
+skills/              razor, scrutiny, inquest, bail, bench, proof, ledger, lens
   razor/digest.md    what the hooks inject; SKILL.md holds the full rules
   lens/page.html     the page lens renders; fixtures/ holds one source per kind
 hooks/
@@ -31,6 +31,8 @@ tests/razor-skill-gate.test.js
 tests/inquest-watch.test.js
 tests/bench-sweep.test.js
 tests/check-leaks.test.js
+tests/check-sticky.test.js
+tests/bail-level.test.js
 tests/lens-core.test.js
 ```
 
@@ -212,7 +214,10 @@ Scope resolution · Load criteria · Load intent · Review · Dispatch · Judge
 Prove · Score · PR hygiene · Standard criteria fallback
 ```
 
-The three skills ship together for this reason. `inquest` alone is
+The three skills ship together for this reason. `inquest` and `proof` also
+run the "Assess" section of `skills/bail/SKILL.md` by name, and
+`check-sticky.sh` runs `skills/bail/level.sh`; the level never comes from
+the model. `inquest` alone is
 incomplete.
 
 **The review never runs in the calling session.** "Dispatch" sends four

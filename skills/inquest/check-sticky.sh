@@ -40,6 +40,26 @@ done
 grep -qE '^### Merge confidence: ([0-9]|10)/10$' "$f" \
   || err "score line must be exactly '### Merge confidence: <0-10>/10'"
 
+# 3b. bail's Merge risk line: five verdicts, the level level.sh gives for them,
+#     and a gap line for every category that is not ✅.
+risk=$(grep -E '^\*\*Merge risk: ' "$f" | head -1)
+if [ -z "$risk" ]; then
+  err "missing the Merge risk line from bail \"Assess\""
+else
+  verdicts=()
+  for c in Alignment Impact Verification Rollback Errors; do
+    v=$(printf '%s' "$risk" | grep -oE "$c (⚠️|👀|✅)" | cut -d' ' -f2)
+    [ -n "$v" ] || { err "Merge risk line lacks a ⚠️/👀/✅ verdict for $c"; continue; }
+    verdicts+=("$v")
+    [ "$v" = "✅" ] || grep -qE "^- $c: .+" "$f" || err "no gap line for $c: add '- $c: <what raises the risk>'"
+  done
+  if [ ${#verdicts[@]} -eq 5 ]; then
+    want=$(sh "$(dirname "$0")/../bail/level.sh" "${verdicts[@]}")
+    got=$(printf '%s' "$risk" | sed -nE 's/^\*\*Merge risk: ([a-z]+)\*\*.*/\1/p')
+    [ "$got" = "$want" ] || err "Merge risk is ${got:-unset}; level.sh gives $want"
+  fi
+fi
+
 # 4. Footer line: Head SHA and Base on one line.
 grep -qE '^Head `[0-9a-f]{7,40}` · Base `[^`]+` @ `[0-9a-f]{7,40}`$' "$f" \
   || err "footer must be: Head \`<sha>\` · Base \`<branch>\` @ \`<sha>\`"
@@ -56,7 +76,7 @@ grep -qE '^Verdict: \*\*(Approve|Request changes|Comment \(not approved\))\*\*' 
 placeholders=(
   '<N>' '<NAME>' '<HEAD_SHA>' '<BASE_BRANCH>' '<BASE_SHA>' 'CODEX_HEAD_SHA'
   '<Assessment prose' '<Findings, only when' '<One sentence' '<Declined line' '<ran at'
-  '<one line' '<ticket IDs' '<Approve | Request changes' '<blocking reason'
+  '<one line' '<ticket IDs' '<Approve | Request changes' '<blocking reason' '<Merge risk line'
 )
 for p in "${placeholders[@]}"; do
   grep -qF "$p" "$f" && err "unfilled template placeholder remains: $p"

@@ -20,14 +20,15 @@ drops, and regrades nothing.
 Command mechanics live in `reference.md` next to this file (§1–§8). Read the
 section when a phase points at it. That file, `check-sticky.sh`, `watch.sh`
 and `codex-manual-prompt.md` sit beside this one; the review core ships with
-`scrutiny`:
+`scrutiny`, the merge risk rubric with `bail`:
 
 ```bash
 SKILL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/inquest"
 CORE="${CLAUDE_PLUGIN_ROOT}/skills/scrutiny/review-core.md"
+BAIL_DIR="${CLAUDE_PLUGIN_ROOT}/skills/bail"
 ```
 
-Set both once, before the first phase that uses them. `$CORE` sections are
+Set them once, before the first phase that uses them. `$CORE` sections are
 named by heading — read the named section when a phase points at it.
 
 ## Language
@@ -112,7 +113,7 @@ it posts.
 **Violating the letter of these rules is violating their spirit.**
 
 On invocation, create one TodoWrite todo per line below, in order. No TodoWrite
-tool in the session → print the 12 items as a markdown checklist instead, and
+tool in the session → print the 13 items as a markdown checklist instead, and
 print it again with its states before any Phase 8 write. Mark an item complete
 only after the work is done and its evidence exists. Never merge, reorder, or
 drop items. Never start a Phase 8 write while an earlier item is open.
@@ -132,11 +133,12 @@ drop items. Never start a Phase 8 write while an earlier item is open.
 8. Phase 7 — Prove: one prover per Critical and Warning (or the trust skip
    recorded), scratch status unchanged, judge returned the final score on
    0–10
-9. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
+9. Phase 7 — bail: a fresh subagent returned the `Merge risk` line
+10. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
    `OK`
-10. Phase 8 — pre-post gate: every item confirmed by running its command
-11. Phase 8 — user confirmed the post
-12. Phase 8 — post (or `--dry-run` print), then the watcher started or its
+11. Phase 8 — pre-post gate: every item confirmed by running its command
+12. Phase 8 — user confirmed the post
+13. Phase 8 — post (or `--dry-run` print), then the watcher started or its
     skip reason printed
 
 ## Non-negotiables
@@ -394,6 +396,12 @@ Map `sources` to the sticky label: lanes and Codex → `(both)`; lanes only →
 `(primary)`; Codex only → `(codex)`. Add the proof state after it:
 `(primary, proven)`, `(both, not proven)`. Adopt findings and score
 unchanged.
+
+Then run "Assess" in `$BAIL_DIR/SKILL.md` in one fresh `general-purpose`
+subagent, never `fork`. Give it the scope, the PR number, `$BAIL_DIR`, and
+the judge's final report, so its `proof:` lines count as evidence. Its
+`Merge risk` line and gap lines go in the sticky unchanged. The line
+informs; it does not move the score or the event.
 
 ## Phase 8 — Output and side effects
 
