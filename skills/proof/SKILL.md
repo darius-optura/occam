@@ -247,11 +247,18 @@ proof_set SESSION "$AGENT_BROWSER_SESSION" >/dev/null
 if proof_pane_open "$BASE_URL$LOGIN_PATH"; then . "$HOME/.claude/proof/out/run-current.env"
 else agent-browser --args "--force-device-scale-factor=1" open "$BASE_URL$LOGIN_PATH" --headed --init-script "$SKILL_DIR/cursor.js"; fi
 ab set viewport 1440 900
-first_profile=${USER_PROFILES%% *}
-ab auth login "$first_profile"
 ab wait 1500
-ab get url
+first_profile=${USER_PROFILES%% *}
+case $(ab get url) in
+  *"$LOGIN_PATH"*) ab auth login "$first_profile"; ab wait 1500; ab get url ;;
+  *) echo "SIGNED_IN_ALREADY $(ab get url)" ;;
+esac
 ```
+
+`SIGNED_IN_ALREADY`: the browser keeps cookies from an earlier run, and the app sent the
+login URL on to a signed-in page. `auth login` on that page types into whatever field it
+finds. Sign out through the user menu, confirm the login page appears, then run
+`ab auth login "$first_profile"`, `ab wait 1500`, `ab get url`.
 
 If the printed URL still contains `LOGIN_PATH`: `snapshot -i`, retry once with the
 selector flags from "Login via auth profiles" in `reference.md`. Still on the login
@@ -259,7 +266,11 @@ page → `proof_browser_close`, `proof_teardown`, STOP with the reason.
 
 In Rex with `terminal-browser` installed, `proof_pane_open` starts the browser in a
 floating pane in front of the session. The developer watches the walk live, and the
-splits behind it keep their size. The viewport stays 1440×900 whatever the pane size.
+splits behind it keep their size. The pane resizes to 16:10, because terminal-browser
+stretches the page to fill its pane. The page is 1440×900 CSS px at the pane's scale,
+and `proof_concat` scales the recording down to 1440 px wide. A pane that Rex does not
+draw has no real size: `PANE_WAITING` asks the developer to bring the session to the
+front, and after 30 s `PANE_HIDDEN` closes the pane and step 4 opens the headed window.
 Elsewhere, a headed agent-browser window opens as before.
 
 Every later block exports `AGENT_BROWSER_SESSION="$SESSION"` after sourcing run state.

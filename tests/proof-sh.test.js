@@ -113,15 +113,23 @@ function paneBin() {
   const log = path.join(dir, 'calls.log');
   fs.writeFileSync(path.join(dir, 'rex'), `#!/bin/sh
 echo "rex $*" >> "${log}"; cat >> "${log}"; echo
-case "$*" in *new_layer*) echo '{"layer_id":"layer:L","block_ids":["block:B"],"revision":1}' ;; esac
+case "$*" in
+  *new_layer*) echo '{"layer_id":"layer:L","block_ids":["block:B"],"revision":1}' ;;
+  *resize_layer*) touch "${dir}/resized" ;;
+esac
 `, { mode: 0o755 });
   fs.writeFileSync(path.join(dir, 'terminal-browser'), `#!/bin/sh
 echo "tb $*" >> "${log}"
 case "$1" in
-  ls) echo '{"browsers":[{"key":"9-1","pane":{"pane":"block:A"}},{"key":"9-2","pane":{"pane":"block:B"}}]}' ;;
-  action) if [ "$5" = batch ]; then cat >> "${log}"; echo; printf '[{"result":{}},{"result":{}},{"result":{"result":%s}}]' "\${FAKE_DPR:-1}"; else echo ok; fi ;;
+  ls) n=$(cat "${dir}/ls" 2>/dev/null || echo 0); echo $((n + 1)) > "${dir}/ls"
+      if [ -f "${dir}/resized" ]; then v='{"width":3552,"height":2232}'
+      elif [ "$n" -lt "\${FAKE_HIDDEN:-0}" ]; then v='{"width":640,"height":384}'
+      else v='{"width":5232,"height":2232}'; fi
+      echo '{"browsers":[{"key":"9-1","pane":{"pane":"block:A"}},{"key":"9-2","pane":{"pane":"block:B"},"viewport":'"$v"'}]}' ;;
+  action) if [ "$5" = batch ]; then cat >> "${log}"; echo; printf '[{"result":{}},{"result":{}},{"result":{"result":%s}}]' "\${FAKE_WIDTH:-1440}"; else echo ok; fi ;;
 esac
 `, { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'sleep'), '#!/bin/sh\n', { mode: 0o755 });
   return { dir, log };
 }
 
@@ -132,23 +140,27 @@ test('proof_pane_open floats a terminal-browser and ab drives its tab', () => {
     { encoding: 'utf8', stdio: 'pipe', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, REX_BLOCK: 'block:me', ...env } }).trim();
   run(`proof_set SKILL_DIR "${root}/skills/proof"`);
 
-  run('proof_pane_open http://localhost:3000/login');
+  // the session starts off screen: the pane holds the 80x24 default until Rex draws it.
+  assert.match(run('proof_pane_open http://localhost:3000/login', { FAKE_HIDDEN: '6' }), /PANE_WAITING[^]*PANE_OPEN 9-2/);
   const state = fs.readFileSync(`${home}/out/run-current.env`, 'utf8');
   assert.match(state, /^TB_KEY='9-2'$/m);
   assert.match(state, /^LAYER='layer:L'$/m);
   const calls = fs.readFileSync(log, 'utf8');
   assert.match(calls, /rex api call -s block:me session.new_layer -/);
   assert.match(calls, /"command":\["terminal-browser","open","--no-merge","http:\/\/localhost:3000\/login"\]/);
+  // a 16:10 layer, sized from the pane the first layer got, then the scale from the settled pane.
+  assert.match(calls, /session.resize_layer -\n\{"layer_id":"layer:L","bounds":\[0\.1928,0\.05,0\.6143,0\.9\]\}/);
+  assert.match(state, /^PANE_DSF='2\.466'$/m);
 
   fs.writeFileSync(log, '');
   run(`. "${home}/out/run-current.env"; ab click @e3`);
   const ab = fs.readFileSync(log, 'utf8');
-  assert.match(ab, /tb action --browser 9-2 -- batch --json\n\[\["set","viewport","1440","900"\],\["eval","\/\/ cursor\.js[^\n]*\["eval","devicePixelRatio"\]\]/);
+  assert.match(ab, /tb action --browser 9-2 -- batch --json\n\[\["set","viewport","1440","900","2\.466"\],\["eval","\/\/ cursor\.js[^\n]*\["eval","innerWidth"\]\]/);
   assert.match(ab, /tb action --browser 9-2 -- click @e3\n/);
 
   // the pane's own zoom shrinks the emulated viewport; ab resets it with ctrl+0.
   fs.writeFileSync(log, '');
-  run(`. "${home}/out/run-current.env"; ab wait 100`, { FAKE_DPR: '1.937' });
+  run(`. "${home}/out/run-current.env"; ab wait 100`, { FAKE_WIDTH: '743' });
   assert.match(fs.readFileSync(log, 'utf8'), /rex send-key -s block:me -b block:B ctrl\+0$/m);
   fs.writeFileSync(log, '');
   run(`. "${home}/out/run-current.env"; ab wait 100`);
@@ -157,6 +169,18 @@ test('proof_pane_open floats a terminal-browser and ab drives its tab', () => {
   fs.writeFileSync(log, '');
   run(`. "${home}/out/run-current.env"; proof_browser_close`);
   assert.match(fs.readFileSync(log, 'utf8'), /session.close_layer -\n\{"layer_id":"layer:L"\}/);
+});
+
+test('proof_pane_open gives up on a pane that Rex never draws', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const { dir, log } = paneBin();
+  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, REX_BLOCK: 'block:me', FAKE_HIDDEN: '999' } }).trim();
+  run(`proof_set SKILL_DIR "${root}/skills/proof"`);
+  assert.throws(() => run('proof_pane_open http://x'), e => e.status === 1 && /PANE_HIDDEN block:B/.test(e.stdout));
+  const calls = fs.readFileSync(log, 'utf8');
+  assert.doesNotMatch(calls, /resize_layer/);
+  assert.match(calls, /session.close_layer -\n\{"layer_id":"layer:L"\}/);
 });
 
 test('proof_pane_open declines outside Rex, and ab falls back to agent-browser', () => {
@@ -169,4 +193,17 @@ test('proof_pane_open declines outside Rex, and ab falls back to agent-browser',
   assert.throws(() => run('proof_pane_open http://x'), e => e.status === 1 && e.stderr === '');
   run('ab wait 100; proof_browser_close');
   assert.strictEqual(fs.readFileSync(log, 'utf8'), 'ab wait 100\nab close\n');
+});
+
+test('proof_concat scales a pane recording down to 1440 px wide', { skip: !hasFfmpeg && 'ffmpeg not on PATH' }, () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe' }).trim();
+  run(`proof_set MP4_OUT "${home}/out/z.mp4"`);
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'color=c=black:s=2880x1800:r=10',
+    '-t', '0.3', '-pix_fmt', 'yuv420p', run('proof_seg_next')], { stdio: 'ignore' });
+  run('proof_concat');
+  const size = execFileSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
+    '-of', 'csv=p=0', `${home}/out/z.mp4`], { encoding: 'utf8' }).trim();
+  assert.strictEqual(size, '1440,900');
 });
