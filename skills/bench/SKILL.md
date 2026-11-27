@@ -4,7 +4,7 @@ description: >-
   Provision or archive an isolated git worktree for a GitHub PR, through the rw (Rex) or hw (herdr)
   fish function, Supacode, herdr, or plain git — whichever is installed. Use when asked to "work on PR #N in
   isolation", spin up a worktree for a PR, or clean one up. `/bench <N>` provisions;
-  `/bench --archive <N>` archives.
+  `/bench --archive <N>` archives; `/bench --sweep` archives every worktree whose PR is merged or closed.
 ---
 
 # Bench
@@ -25,6 +25,8 @@ Parse by format, not position:
 - `<pr-number>` — provision a worktree for this PR.
 - `--archive <pr-number>` — archive the worktree for this PR instead of
   creating one.
+- `--sweep` — find every worktree whose PR is merged or closed, and archive
+  the ones that hold no unsaved work, after the user confirms.
 
 Exactly one of these is expected per invocation.
 
@@ -332,6 +334,31 @@ archive flow trusts that field.
    git branch -D "$WT_BRANCH" 2>/dev/null || true
    ```
    Step 4 made sure the branch holds nothing that is not on `origin`.
+
+## Sweep flow
+
+`/bench --sweep`, from the main checkout:
+
+1. List every worktree with its PR state. `sweep.sh` sits beside this file
+   and only reads:
+   ```bash
+   sh "${CLAUDE_PLUGIN_ROOT}/skills/bench/sweep.sh" "$MAIN_ROOT"
+   ```
+   One line per worktree: `STATE  VERDICT  PR  BRANCH  PATH`. `safe` means
+   the PR is merged or closed, the tree is clean, and `HEAD` is in the PR's
+   history or on a remote. Every `keep:<why>` stays.
+2. Print a table of the `safe` rows, then one line that counts each `keep`
+   reason. Nothing `safe` → print the table of kept rows and stop.
+3. Ask with AskUserQuestion: **Archive all <n>**, **Pick**, or **Abort**.
+   Pick → a multi-select of the `safe` rows.
+4. Run "Archive flow" for each chosen PR, one at a time. Its step 4 checks
+   again, so a worktree that changed since step 1 stays. The sweep runs in
+   the main checkout, so its "final operation" rule does not stop the next
+   archive.
+5. Print one line per PR: `archived` or the reason it stayed.
+
+A worktree the backend made with no PR (`NONE`) is never archived by the
+sweep. Archive it by hand.
 
 ## State file
 

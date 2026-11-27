@@ -519,9 +519,15 @@ After the post, start `watch.sh` in the background. It polls the PR with
 The watcher only starts the round. It never posts, and it never approves.
 The next round asks the user before it posts, as every round does.
 
+When the PR is merged or closed, the watcher sends
+`/occam:bench --archive <N>` to the same session instead. `bench` refuses
+to remove a worktree with uncommitted files or unpushed commits, so the
+cleanup never loses work.
+
 Skip it, and print the reason in one line, when any of these is true:
-local mode, `--dry-run`, `--no-watch`, `--archive`, or the final event is
-`APPROVE`. On `APPROVE`, also stop a running watcher for `<N>`.
+local mode, `--dry-run`, `--no-watch`, or `--archive`. On `APPROVE`, stop a
+running watcher for `<N>` and start one with `--archive-only`: it waits for
+the merge or close and sends only the archive.
 
 State lives next to the bench map, one entry per PR:
 
@@ -534,15 +540,16 @@ OLD=$(jq -r --arg n "<N>" '.[$n].pid // empty' "$WATCH")
 [ -n "$OLD" ] && ps -p "$OLD" -o command= 2>/dev/null | grep -q watch.sh && kill "$OLD"
 ```
 
-`ROUND` above 3 → do not start it. Delete the entry and print
-`watch: stopped after 3 rounds — run /occam:inquest <N> by hand`.
+`ROUND` above 3 → start it with `--archive-only` and print
+`watch: review rounds stopped after 3 — run /occam:inquest <N> by hand; archive still watched`.
 
 Else start one watcher, with this session as its target. Pass both target
 flags every time; the script ignores an empty one:
 
 ```bash
 LOG="$MAIN_ROOT/.claude/worktrees/.inquest-watch-<N>.log"
-nohup sh "$SKILL_DIR/watch.sh" --repo "$OWNER/$REPO" --pr <N> --sha "$HEAD_SHA" \
+ONLY=""   # --archive-only after APPROVE or after round 3
+nohup sh "$SKILL_DIR/watch.sh" $ONLY --repo "$OWNER/$REPO" --pr <N> --sha "$HEAD_SHA" \
   --path "$(git rev-parse --show-toplevel)" \
   --pane "${HERDR_PANE_ID:-}" --wt-id "${SUPACODE_WORKTREE_ID:-}" \
   --rex-session "${REX_SESSION:-}" --rex-block "${REX_BLOCK:-}" > "$LOG" 2>&1 &
@@ -555,8 +562,7 @@ echo "watch: round $ROUND, pid $PID, log $LOG"
 
 With no pane, no Rex block and no supacode worktree, the watcher sends a macOS
 notification and writes the command to continue into its log. It exits
-after one trigger, and when the PR is merged or closed, or the worktree is
-gone.
+after one trigger or one archive, and when the worktree is gone.
 
 ### PR hygiene
 

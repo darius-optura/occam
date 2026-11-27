@@ -154,3 +154,13 @@ Ceiling: the Lanes line is not stored. Append it to a log when someone will
 read the trend across runs.
 Rejected: one eval per distrust pass — eight scaffolds that mostly repeat
 `scrutiny-finds-planted-bugs`.
+
+## 2026-11-27 — Worktrees clean up when their PR is merged or closed
+Why: `bench` worktrees stayed after review; intent held ten. The watcher now
+sends `/occam:bench --archive <N>` on merge or close, also after an approve,
+and `/bench --sweep` archives the rest after the user confirms.
+Rule: the sweep reads only; "Archive flow" removes, and it refuses
+uncommitted files or commits that are on no remote and not in the PR.
+Rejected: the watcher removes the worktree itself — it would bypass the
+backend teardown (`hw-rm`, `rw-rm`) and the archive checks.
+Rejected: sweeping worktrees with no PR — they are the user's own work.

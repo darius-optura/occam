@@ -73,9 +73,21 @@ test('a review requested from someone else does not trigger', () => {
   assert.strictEqual(once(pr({ head: 'old', requested: ['other'] })), 'wait head-unchanged');
 });
 
-test('stops when the PR is merged or closed', () => {
-  assert.strictEqual(once(pr({ state: 'MERGED' })), 'stop merged');
-  assert.strictEqual(once(pr({ state: 'CLOSED' })), 'stop closed');
+test('archives when the PR is merged or closed', () => {
+  assert.strictEqual(once(pr({ state: 'MERGED' })), 'archive merged');
+  assert.strictEqual(once(pr({ state: 'CLOSED' })), 'archive closed');
+});
+
+test('a merged PR sends the archive to the rex block, scoped to its session', () => {
+  const { out, herdr } = run(pr({ state: 'MERGED' }), ['--rex-session', 's1', '--rex-block', 'b1']);
+  assert.match(out, /archive sent to rex block b1/);
+  assert.match(herdr, /^send -s s1 -b b1 \/occam:bench --archive 7$/m);
+});
+
+test('--archive-only waits through review signals and acts only on merge or close', () => {
+  assert.strictEqual(once(pr({ requested: ['me'] }), ['--archive-only']), 'wait open-pr');
+  assert.strictEqual(once(pr({ threads: [['me', ALERT, true]] }), ['--archive-only']), 'wait open-pr');
+  assert.strictEqual(once(pr({ state: 'MERGED' }), ['--archive-only']), 'archive merged');
 });
 
 test('stops when the worktree is gone', () => {
@@ -107,11 +119,11 @@ test('with no pane, a trigger prints the command to continue', () => {
   assert.strictEqual(herdr, '');
 });
 
-test('inquest starts the watcher after the post, and never on approve', () => {
+test('inquest starts the watcher after the post, and only for the archive on approve', () => {
   const skill = fs.readFileSync(path.join(__dirname, '..', 'skills', 'inquest', 'SKILL.md'), 'utf8');
   const watch = skill.indexOf('### Watch');
   assert.ok(watch > skill.indexOf('### Post'), 'Watch must follow Post');
   assert.ok(skill.includes('nohup sh "$SKILL_DIR/watch.sh"'), 'Watch lost the background start');
   assert.ok(skill.includes('--no-watch'), 'inquest lost --no-watch');
-  assert.match(skill.slice(watch, watch + 1200), /final event is\s+`APPROVE`/, 'Watch must skip on approve');
+  assert.match(skill.slice(watch, watch + 1400), /On `APPROVE`[^.]*start one with `--archive-only`/, 'approve must watch only for the archive');
 });
