@@ -6,8 +6,9 @@ set -u
 
 patterns=(
   'local path|/(Users|home)/[A-Za-z0-9._-]+/'
-  'local path|/(private/)?var/folders/'
-  'local path|[A-Za-z]:\\\\Users\\\\'
+  'local path|/root/'
+  'local path|/(private/)?(var/folders|tmp)/'
+  'local path|[A-Za-z]:[\\/]+Users[\\/]+'
   'GitHub token|gh[pousr]_[A-Za-z0-9]{20,}'
   'GitHub token|github_pat_[A-Za-z0-9_]{20,}'
   'AWS key|AKIA[0-9A-Z]{16}'
@@ -18,9 +19,15 @@ patterns=(
 )
 fail=0
 for f in "$@"; do
+  # An unreadable file passes no check: fail closed.
+  [ -f "$f" ] && [ -r "$f" ] || { echo "LEAK $f: unreadable"; fail=1; continue; }
   for p in "${patterns[@]}"; do
     hit=$(grep -oE -- "${p#*|}" "$f" | head -1)
     [ -n "$hit" ] && { echo "LEAK $f: ${p%%|*} (${hit:0:12}…)"; fail=1; }
+  done
+  for v in HOME TMPDIR; do
+    val=${!v:-}; val=${val%/}
+    [ ${#val} -gt 1 ] && grep -qF -- "$val" "$f" && { echo "LEAK $f: \$$v"; fail=1; }
   done
 done
 [ $fail -eq 0 ] && echo OK
