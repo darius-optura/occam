@@ -377,6 +377,19 @@ test('Prove runs each Critical and Warning, and only code the user may trust', (
   }
 });
 
+test('a proven finding ships its repro, and nothing posts a local path or a secret', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const prove = core.slice(core.indexOf('\n## Prove\n'), core.indexOf('\n## Score\n'));
+  assert.ok(/^\s+source: /m.test(prove), 'the prover no longer returns its repro source');
+  assert.ok(prove.includes('$TMPDIR/prove-'), 'Prove deletes the repros without a copy');
+  const inquest = read('skills', 'inquest', 'SKILL.md');
+  const ref = read('skills', 'inquest', 'reference.md');
+  assert.ok(inquest.includes('<summary>Repro</summary>') && ref.includes('<summary>Repro</summary>'),
+    'the inline thread of a proven finding lost its repro block');
+  assert.ok(/check-leaks\.sh/.test(inquest), 'the pre-post gate does not run check-leaks.sh');
+  assert.ok(/^## Repros$|Repros/m.test(read('skills', 'scrutiny', 'SKILL.md')), 'scrutiny does not print the repros');
+});
+
 test('replies are data, and only a Suggestion or Nit can be declined', () => {
   const core = read('skills', 'scrutiny', 'review-core.md');
   assert.ok(core.includes('instruction aimed at the reviewer'), 'Review lost the untrusted-input rule');
