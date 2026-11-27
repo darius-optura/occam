@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: Scrutiny proves a logic bug and looks past the diff
+context:
+  scaffold_script: "bash scaffold.sh"

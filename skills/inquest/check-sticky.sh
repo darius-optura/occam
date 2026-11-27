@@ -55,7 +55,7 @@ grep -qE '^Verdict: \*\*(Approve|Request changes|Comment \(not approved\))\*\*' 
 # 6. No unfilled template placeholders may remain.
 placeholders=(
   '<N>' '<NAME>' '<HEAD_SHA>' '<BASE_BRANCH>' '<BASE_SHA>' 'CODEX_HEAD_SHA'
-  '<Assessment prose' '<Findings, only when' '<One sentence' '<ran at'
+  '<Assessment prose' '<Findings, only when' '<One sentence' '<Declined line' '<ran at'
   '<one line' '<ticket IDs' '<Approve | Request changes' '<blocking reason'
 )
 for p in "${placeholders[@]}"; do

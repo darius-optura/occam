@@ -11,6 +11,8 @@
 
 <One sentence: passes ran, prior threads verified and not re-raised. Add security or hygiene notes ONLY when something failed or deserves note.>
 
+<Declined line, only when the judge declined findings: Declined: `file:line` — the author's reason; …>
+
 Head `<HEAD_SHA>` · Base `<BASE_BRANCH>` @ `<BASE_SHA>`
 Codex: <ran at `CODEX_HEAD_SHA` — verdict | pasted from chat at `CODEX_HEAD_SHA` — verdict | skipped — codex CLI not installed | skipped — manual codex declined by user | not run — no base ref for this scope | invalid — could not check out the PR head> · CI: <one line: states + blocking checks>
 Intent: <ticket IDs + linked doc count, e.g. ENG-123 + 2 docs | none — no Linear ID found | none — Linear tools not available | none — <ID> not found in Linear>

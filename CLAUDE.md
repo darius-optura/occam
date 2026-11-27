@@ -200,7 +200,7 @@ headings:
 
 ```
 Scope resolution · Load criteria · Load intent · Review · Dispatch · Judge
-Score · PR hygiene · Standard criteria fallback
+Prove · Score · PR hygiene · Standard criteria fallback
 ```
 
 The three skills ship together for this reason. `inquest` alone is
@@ -214,6 +214,9 @@ diff grades its own plan, so `fork` is forbidden and the orchestrator may
 not add, drop, or regrade a finding. The lanes together must own all eight
 distrust passes and all five categories; the invariants test checks the
 lane table. No Agent tool → the loud inline fallback, never a silent one.
+"Prove" sends each Critical and Warning to a fresh prover that runs a repro
+under `.prove/`; the judge applies the outcome and scores. Provers run only
+in local mode or when the PR author has write access.
 
 **lens draws only a finished call.** The ToolUse hook also runs while the
 input streams; an `Image` from a partial input makes the engine refuse the

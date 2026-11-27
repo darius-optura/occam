@@ -26,7 +26,8 @@ path: `${CLAUDE_PLUGIN_ROOT}/skills/scrutiny/review-core.md`.
 
 On invocation, create one TodoWrite todo per phase (scope resolution,
 criteria paths resolved, four lanes dispatched, lanes returned with all
-eight passes checked, judge returned with score, PR hygiene, output). Mark
+eight passes checked, judge returned, provers ran and the judge scored, PR
+hygiene, output). Mark
 each complete only after the work is done and its evidence exists.
 
 ## Inputs
@@ -69,7 +70,8 @@ Then run "Load intent" in `review-core.md`. Its file path, or its
 
 ## Phase 2: Dispatch
 
-Run "Dispatch" in `review-core.md`: fill the lane brief once, launch lanes
+Run "Dispatch" in `review-core.md`: fill the lane brief once, with
+`Since: none`, launch lanes
 A, B, C and D in one message as fresh `general-purpose` subagents (lane D
 on `code-simplifier` when listed, per "Dispatch"), never `fork`. When they return, confirm every lane printed a `Checked:` line for
 each of its passes; re-run a lane that did not. No Agent tool → the inline
@@ -77,10 +79,14 @@ fallback in "Dispatch", and its `Reviewers:` line in the output.
 
 ## Phase 3: Judge
 
-Run "Judge" in `review-core.md` with the four lane reports verbatim and
-`External pass: none`. Its findings and `Score:` line are final. Run
-"Review" in `review-core.md` only through the lanes and the judge, never
-here.
+Run "Judge" in `review-core.md` with the four lane reports verbatim,
+`External pass: none` and `Prior threads: none`. Run "Review" in `review-core.md` only through the
+lanes and the judge, never here.
+
+The judge ends with `Score: pending prove` → run "Prove" in `review-core.md`
+against the working tree (local mode, so the trust rule allows it), then
+send the results to the judge. Its second report and its
+`Score:` line are final.
 
 ## Phase 4: PR hygiene (conditional)
 
@@ -95,12 +101,16 @@ summary uses, so it is interchangeable with the GitHub version:
    one-line assessment.
 2. **Scope** — one line stating exactly what was diffed (e.g.
    `Scope: git diff origin/main...HEAD (24 files, +812/-130)`), then
-   `Reviewers: 4 lanes + judge, fresh subagents` — or the in-session line
-   from "Dispatch" when the Agent tool was missing, then the `Intent:` line
+   `Reviewers: 4 lanes + judge + <n> provers, fresh subagents` — or the in-session line
+   from "Dispatch" when the Agent tool was missing. Append
+   `· not covered: lane <X> — <reason>` for each lane the judge marked so.
+   Then the judge's `Lanes:` line, raised and kept per lane. Then the
+   `Intent:` line
    from "Load intent" (e.g. `Intent: ENG-123 + 2 docs`).
 3. **Summary** — what the change does and its impact.
 4. **PR Hygiene** — pass/fail checklist if a PR exists, else skipped.
-5. **Critical Issues (N)** — table: `# | File:Line | Issue | Suggested fix`.
+5. **Critical Issues (N)** — table: `# | File:Line | Issue | Suggested fix | Proof`.
+   Proof is the `repro` command, or `none — <why>`.
    Findings, severities and count come from the judge, unchanged.
 6. **Warnings (N)** — same table format.
 7. **Suggestions (N)** — numbered list with `file:line` references.
@@ -112,6 +122,8 @@ If a section is empty, print the header with `(0)` and a single line
 predictable.
 
 Do NOT post anything to GitHub. Do NOT modify any files. Do NOT run
-formatters, linters, or tests as part of this skill — review only.
+formatters or linters. The provers are the one exception: they write and
+run repros under `.prove/`, and "Prove" deletes it and checks the tree is
+as it was.
 If the user wants to apply fixes, they can ask separately and run their
 fix workflow.

@@ -112,7 +112,7 @@ it posts.
 **Violating the letter of these rules is violating their spirit.**
 
 On invocation, create one TodoWrite todo per line below, in order. No TodoWrite
-tool in the session → print the 11 items as a markdown checklist instead, and
+tool in the session → print the 12 items as a markdown checklist instead, and
 print it again with its states before any Phase 8 write. Mark an item complete
 only after the work is done and its evidence exists. Never merge, reorder, or
 drop items. Never start a Phase 8 write while an earlier item is open.
@@ -125,16 +125,18 @@ drop items. Never start a Phase 8 write while an earlier item is open.
    subagents (or the in-session fallback reason recorded)
 4. Phase 4 — prior threads + CI pulled (PR mode)
 5. Phase 5 — all four lanes returned; `Checked:` lines cover all eight
-   distrust passes
+   distrust passes, or a lane is recorded as not covered
 6. Phase 6 — Codex result collected at the PR head SHA (CLI output, or the
    user's pasted chat output), or the recorded reason confirmed
-7. Phase 7 — judge returned: merged findings + score on 0–10, adopted
-   unchanged
-8. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
+7. Phase 7 — judge returned: merged findings, adopted unchanged
+8. Phase 7 — Prove: one prover per Critical and Warning (or the trust skip
+   recorded), scratch status unchanged, judge returned the final score on
+   0–10
+9. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
    `OK`
-9. Phase 8 — pre-post gate: every item confirmed by running its command
-10. Phase 8 — user confirmed the post
-11. Phase 8 — post (or `--dry-run` print), then the watcher started or its
+10. Phase 8 — pre-post gate: every item confirmed by running its command
+11. Phase 8 — user confirmed the post
+12. Phase 8 — post (or `--dry-run` print), then the watcher started or its
     skip reason printed
 
 ## Non-negotiables
@@ -272,8 +274,22 @@ of REVIEW.md, the CLAUDE.md chain and the stack checklist
 Run "Load intent" in `$CORE` with the PR body and the branch name. Record
 its `Intent:` line for the sticky.
 
+A later round reviews the fix commits on their own too. The last reviewed
+SHA is the `Head` in the existing sticky:
+
+```bash
+PREV=$(gh api "repos/$OWNER/$REPO/issues/<N>/comments" --paginate \
+  -q '.[] | select(.body | contains("<!-- inquest:sticky -->")) | .body' \
+  | sed -n 's/^Head `\([0-9a-f]*\)`.*/\1/p' | head -1)
+[ -n "$PREV" ] && [ "$PREV" != "$HEAD_SHA" ] && git merge-base --is-ancestor "$PREV" "$HEAD_SHA" \
+  && echo "Since: git diff $PREV..$HEAD_SHA" || echo "Since: none"
+```
+
+A force-push that drops `PREV` from the history gives `Since: none`; the
+full diff still runs.
+
 Then run "Dispatch" in `$CORE`: fill the lane brief with the worktree path,
-`git diff <BASE_SHA>...<HEAD_SHA>`, the PR title, the intent file path or
+`git diff <BASE_SHA>...<HEAD_SHA>`, the `Since:` line, the PR title, the intent file path or
 `none — <reason>`, the absolute `$CORE` path
 and the criteria paths; launch lanes A, B, C and D in one message as fresh
 `general-purpose` subagents (lane D on `code-simplifier` when listed, per
@@ -287,9 +303,8 @@ judge — scope per the Non-negotiables row. REVIEW.md absent → `$CORE`
 ## Phase 4 — Prior review state + CI (PR mode only)
 
 Resolve `OWNER`, `REPO`, `HEAD_SHA`, `ME` once (reference.md §1 — retry
-transient failures). Pull in parallel (reference.md §2, GraphQL fallback
-included): existing reviews + issue comments, inline review comments
-(paginated), CI checks.
+transient failures). Pull in parallel (reference.md §2): existing reviews + issue comments,
+every review thread through paginated GraphQL, CI checks.
 
 - **Dedup before posting, two signals.** Structural: same `path` within ±5
   lines. Semantic: same failure mode in the body. Both match → no new thread;
@@ -300,11 +315,16 @@ included): existing reviews + issue comments, inline review comments
   place, never a finding. Own open inline threads (`user.login == $ME`) →
   match by path/window/failure-mode: still open → reply or stay silent; fixed
   → optionally resolve; no match → genuinely new thread.
-- **Distrust resolved threads.** Resolution is a claim — verify the code. An
-  author dismissing a valid finding is itself a finding.
+- **Prior threads file.** Write one file outside the repo (`mktemp`): per
+  thread its path and line, resolved and outdated state, and each comment
+  with its author, the author's permission, and the body. Get each
+  replier's permission once (reference.md §2). Its path goes in the
+  `Prior threads:` line of the judge brief.
+- **Distrust resolved threads.** Resolution is a claim. The judge verifies
+  it in the code and applies "Declines" in `$CORE`. An author who dismisses
+  a valid Critical or Warning does not clear it.
 - **Score only what the judge confirms.** A bot's word alone never moves
-  the score; prior bot findings reach the judge as external input, not as
-  findings.
+  the score; prior bot findings reach the judge as data, not as findings.
 - **CI feeds the verdict.** A failing check on the reviewed head blocks a
   clean approve. Required-status is not knowable read-only — assume a failing
   check is merge-blocking unless it is a known false positive, and state the
@@ -316,7 +336,9 @@ Wait for lanes A, B, C and D. Check each report: a `Checked:` line per
 assigned distrust pass plus the always-flag scan, and every finding in the
 `Finding` shape with a `location` inside the diff. A lane missing a
 `Checked:` line is re-run with the same brief. Together the four reports
-must name all eight passes. Keep the reports verbatim for the judge; do not
+must name all eight passes. A re-run that fails again → record
+`Lane <X>: not covered — <reason>` and send that line to the judge in the
+lane's place. Never fill the gap yourself. Keep the reports verbatim for the judge; do not
 summarise, filter, or grade them here. "Review" in `$CORE` runs only inside
 the lanes and the judge.
 
@@ -355,8 +377,23 @@ REVIEW.md, else `$CORE` "Score" (start at 10; Critical −3..−5, Warning
 −1..−2, missing tests −1; floor 1). Non-0–10 rubric → normalize to 0–10
 before comparing. Approve threshold is 9.
 
+The judge ends with `Score: pending prove` → run "Prove" in `$CORE` in the
+`bench` worktree. Get the author's permission first; a bot or an unknown
+login has none:
+
+```bash
+PERM=$(gh api "repos/$OWNER/$REPO/collaborators/$PR_AUTHOR/permission" -q .permission 2>/dev/null || echo none)
+```
+
+Send the prover results to the judge per "Judge" in `$CORE`, step 5. Its
+second report is final. Print its `Lanes:` line to the terminal, not the
+sticky: a lane that raises many findings the judge drops needs a sharper
+brief.
+
 Map `sources` to the sticky label: lanes and Codex → `(both)`; lanes only →
-`(primary)`; Codex only → `(codex)`. Adopt findings and score unchanged.
+`(primary)`; Codex only → `(codex)`. Add the proof state after it:
+`(primary, proven)`, `(both, not proven)`. Adopt findings and score
+unchanged.
 
 ## Phase 8 — Output and side effects
 
@@ -382,6 +419,13 @@ failure → STOP, report, fix. No write call until all pass:
    ```bash
    bash "$SKILL_DIR/check-sticky.sh" sticky.md
    ```
+8. The PR head did not move since the review. Run it again right before the
+   write, after the user confirms:
+   ```bash
+   [ "$(gh pr view <N> --json headRefOid -q .headRefOid)" = "$HEAD_SHA" ] && echo HEAD_OK
+   ```
+   No `HEAD_OK` → do not post. Tell the user the PR moved to a new head,
+   and offer a new round.
 
 ### Review event
 
@@ -393,6 +437,8 @@ failure → STOP, report, fix. No write call until all pass:
   `REQUEST_CHANGES`. Failing check you cannot dismiss (flake/unrelated) → no
   approve; `COMMENT`, name the check. Acknowledged false positive → APPROVE
   may stand; name the check with "dismiss before merge".
+- **Rule 3 — coverage gate.** A lane recorded as not covered → no approve;
+  `COMMENT`. The sticky names the lane and the reason.
 
 ### Confirm with the user (PR mode — after the gate, before any write)
 
@@ -446,10 +492,14 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   it. On a re-run, lead with what changed since the last reviewed SHA and
   which prior findings are now fixed.
 - Findings: one line each — `- [Severity] \`file:line\` — failure mode + fix
-  direction. (source)`. Never restate the inline thread body.
+  direction. (source, proof state)`. Never restate the inline thread body.
+  The inline thread of a proven finding quotes its `repro` command.
+- Declined findings: one `Declined:` line, each `file:line` with the
+  author's reason. Omit the line when nothing was declined.
 - One sentence for the cleared passes ("Four lanes, Codex and the judge
   ran in fresh sessions; prior threads verified, not re-raised."). The
-  in-session fallback from `$CORE` "Dispatch" is named here when it fired. Security or hygiene get a sentence ONLY when
+  in-session fallback from `$CORE` "Dispatch" is named here when it fired,
+  and so is every lane not covered. Security or hygiene get a sentence ONLY when
   something failed or deserves note — no pass/fail tables, no empty sections,
   no boilerplate.
 - Footer: `Head`/`Base` line, `Codex:` + `CI:` line, `Intent:` line, `Verdict:`

@@ -131,3 +131,26 @@ Constraint: each `terminal-browser action` call reconnects, so `open` and
 back before every command.
 Rejected: a split pane — the video takes the pane shape (a full-width bottom
 split recorded 5760×1154).
+
+## 2026-11-27 — The review proves each Critical and Warning by running a repro
+Why: the judge verifies by reading, so the review still trusts its own
+claims. A fresh prover per Critical and Warning writes a failing test or a
+script under `.prove/`, runs it, and returns proven, plausible or rejected.
+The judge applies the outcome and scores; the orchestrator still changes
+nothing.
+Rule: a repro runs code from the change, so provers run only in local mode
+or when the PR author has write access. The tree status must match before
+and after.
+Rejected: proving Suggestions and Nits — the cost buys no merge decision.
+Rejected: the judge runs the repros itself — one agent in series, and the
+judge would grade its own experiment.
+
+## 2026-11-27 — Review calibration lives in evals and one Lanes line
+Why: a lane that raises many findings the judge drops needs a sharper
+brief, and a scan that stops firing is a silent regression. The judge prints
+raised and kept per lane, and `evals/scrutiny-proves-deep-findings` plants
+one defect behind each new scan.
+Ceiling: the Lanes line is not stored. Append it to a log when someone will
+read the trend across runs.
+Rejected: one eval per distrust pass — eight scaffolds that mostly repeat
+`scrutiny-finds-planted-bugs`.

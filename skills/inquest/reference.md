@@ -22,31 +22,41 @@ data as unavailable.
 
 ```bash
 gh pr view <N> --json reviews,comments            # sticky lives in comments
-gh api repos/{owner}/{repo}/pulls/<N>/comments --paginate
-#   each: .path, .line / .original_line, .body, .user.login, .id, .in_reply_to_id
 gh pr checks <N>   # or: gh api repos/{owner}/{repo}/commits/"$HEAD_SHA"/check-runs
 ```
 
-`--paginate` concatenates one JSON array per page — parse per page or add
-`--slurp` and flatten.
-
-### GraphQL fallback for inline comments (REST 503/404)
+Threads come from GraphQL, the only source of `isResolved` and `isOutdated`.
+Fetch every page: a PR with more than 100 threads loses dedup otherwise.
+Strip control characters before `jq`; one raw byte in a body breaks the parse.
 
 ```bash
-gh api graphql -f query='
-{ repository(owner:"'"$OWNER"'", name:"'"$REPO"'") {
-    pullRequest(number: <N>) {
-      reviewThreads(first: 100) { nodes {
-        isResolved
-        comments(first: 50) { nodes { databaseId path line body author { login } } }
-      } }
-    } } }'
+CURSOR=null; : > threads.jsonl
+while :; do
+  page=$(gh api graphql -F owner="$OWNER" -F repo="$REPO" -F n=<N> -F after="$CURSOR" -f query='
+    query($owner:String!,$repo:String!,$n:Int!,$after:String){ repository(owner:$owner,name:$repo){ pullRequest(number:$n){
+      reviewThreads(first:100, after:$after){ pageInfo{hasNextPage endCursor} nodes{
+        isResolved isOutdated path line originalLine
+        comments(first:100){ nodes{ databaseId body author{login} } } } } } } }' \
+    | LC_ALL=C tr -d '\000-\010\013\014\016-\037')
+  printf '%s' "$page" | jq -c '.data.repository.pullRequest.reviewThreads.nodes[]' >> threads.jsonl
+  [ "$(printf '%s' "$page" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.hasNextPage')" = true ] || break
+  CURSOR=$(printf '%s' "$page" | jq -r '.data.repository.pullRequest.reviewThreads.pageInfo.endCursor')
+done
 ```
 
-Mapping: GraphQL `author.login` = REST `user.login`; `databaseId` = REST `id`
-(pass as `in_reply_to_id` for replies). `isResolved` is the reliable
-resolved-signal. No `databaseId` available → restrict the fallback to the
-"stay silent" dedup action; never reply without a target id.
+Each replier's permission, once per login. A bot or an unknown login has
+none, and its reply is never a decline:
+
+```bash
+for login in $(jq -r '.comments.nodes[].author.login' threads.jsonl | sort -u); do
+  printf '%s %s\n' "$login" "$(gh api "repos/$OWNER/$REPO/collaborators/$login/permission" -q .permission 2>/dev/null || echo none)"
+done > permissions.txt
+```
+
+One thread per line. `line` is null on an outdated thread; use `originalLine`.
+`databaseId` is the REST comment id: pass the first comment's as
+`in_reply_to_id` for a reply. A thread with no `databaseId` gets the "stay
+silent" dedup action only; never reply without a target id.
 
 ## 3. Codex head guard — catch-up path (Phase 2)
 
@@ -108,6 +118,7 @@ PENDING review):
 ```bash
 cat > review.json <<'JSON'
 {
+  "commit_id": "<HEAD_SHA>",
   "event": "REQUEST_CHANGES",
   "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\nRequest changes — three unaudited callsites. Score and detail in the sticky; findings in the inline threads.",
   "comments": [
@@ -116,8 +127,22 @@ cat > review.json <<'JSON'
   ]
 }
 JSON
-gh api --method POST repos/{owner}/{repo}/pulls/<N>/reviews --input review.json
+out=$(gh api --method POST repos/{owner}/{repo}/pulls/<N>/reviews --input review.json 2>&1) || case "$out" in
+  *"HTTP 422"*)   # one anchor is off the diff: post the verdict alone, then each comment alone
+    jq 'del(.comments)' review.json | gh api --method POST repos/{owner}/{repo}/pulls/<N>/reviews --input -
+    jq -c --arg sha "$HEAD_SHA" '.comments[] | . + {commit_id: $sha}' review.json | while read -r c; do
+      printf '%s' "$c" | gh api --method POST repos/{owner}/{repo}/pulls/<N>/comments --input - >/dev/null \
+        || echo "OFF_DIFF $(printf '%s' "$c" | jq -r '"\(.path):\(.line)"')"
+    done ;;
+  *) echo "$out"; false ;;
+esac
 ```
+
+`commit_id` pins every thread to the reviewed head. A 422 on the batch means
+one comment's line is not in the diff at that commit; the fallback keeps the
+verdict and every comment that does anchor. Fold each `OFF_DIFF` finding into
+the sticky, then run `check-sticky.sh` again before the sticky posts. Any
+other failure stops the post.
 
 Every `body` — the review's and each comment's — opens with the on-behalf
 alert from razor WRITE; `<NAME>` is `git config user.name`. The same alert

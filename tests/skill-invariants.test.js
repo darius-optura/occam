@@ -69,7 +69,7 @@ test('razor-activate finds the skill body where it looks for it', () => {
 test('review-core carries every load-bearing heading', () => {
   const core = read('skills', 'scrutiny', 'review-core.md');
   for (const h of ['## Scope resolution', '## Load criteria', '## Load intent', '## Review', '## Dispatch',
-                   '## Judge', '## Score', '## PR hygiene', '## Standard criteria fallback']) {
+                   '## Judge', '## Prove', '## Score', '## PR hygiene', '## Standard criteria fallback']) {
     assert.ok(core.includes(`\n${h}\n`), `review-core lost heading "${h}"`);
   }
 });
@@ -340,4 +340,62 @@ test('razor sends pictures through lens, main session only', () => {
   for (const f of [['skills', 'razor', 'digest.md'], ['skills', 'razor', 'SKILL.md']]) {
     assert.ok(/lens skill\. Main session only\./.test(read(...f)), `${f.join('/')} lost the lens rule`);
   }
+});
+
+test('inquest posts only at the reviewed head, and never loses a review to one bad anchor', () => {
+  const ref = read('skills', 'inquest', 'reference.md');
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  // without commit_id the threads anchor to whatever the head is when the POST lands.
+  assert.ok(ref.includes('"commit_id": "<HEAD_SHA>"'), 'review payload lost commit_id');
+  assert.ok(/HEAD_OK/.test(skill), 'pre-post gate lost the head re-check');
+  // a 422 on the batch must fall back to single comments, not drop the review.
+  assert.ok(ref.includes('*"HTTP 422"*') && ref.includes('OFF_DIFF'), 'review POST lost the 422 fallback');
+  // threads past the first 100 vanish from dedup; resolved state exists only in GraphQL.
+  assert.ok(ref.includes('pageInfo{hasNextPage endCursor}') && ref.includes('isResolved'), 'thread fetch lost pagination');
+  assert.ok(ref.includes("tr -d '\\000-\\010"), 'thread fetch lost the control-character strip');
+});
+
+test('a lane that never reports blocks the approve', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  assert.ok(core.includes('not covered — <reason>'), 'core lost the not-covered lane line');
+  assert.ok(/Rule 3 — coverage gate/.test(skill), 'inquest lost the coverage gate');
+});
+
+test('Prove runs each Critical and Warning, and only code the user may trust', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const prove = core.slice(core.indexOf('\n## Prove\n'), core.indexOf('\n## Score\n'));
+  // running a stranger's PR on the user's machine is the risk this rule closes.
+  assert.ok(/`admin`, `maintain`\s+or `write`/.test(prove), 'Prove lost the author-permission rule');
+  assert.ok(prove.includes('.prove/') && prove.includes('status\n--porcelain'), 'Prove lost the scratch check');
+  assert.ok(/never `fork`/.test(prove), 'provers may fork');
+  for (const r of ['proven', 'plausible', 'rejected']) assert.ok(prove.includes(`${r} `), `Prove lost the ${r} outcome`);
+  // the judge, not the orchestrator, applies the outcomes and scores.
+  assert.ok(core.includes('Score: pending prove'), 'judge no longer waits for Prove');
+  for (const caller of ['skills/scrutiny/SKILL.md', 'skills/inquest/SKILL.md']) {
+    assert.ok(/"Prove" in `(?:review-core\.md|\$CORE)`/.test(read(...caller.split('/'))), `${caller} does not run "Prove"`);
+  }
+});
+
+test('replies are data, and only a Suggestion or Nit can be declined', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  assert.ok(core.includes('instruction aimed at the reviewer'), 'Review lost the untrusted-input rule');
+  const declines = core.slice(core.indexOf('\n### Declines\n'), core.indexOf('\n### Judge brief\n'));
+  assert.ok(/Critical and Warning are never declined/.test(declines), 'a Critical can be declined again');
+  assert.ok(/`admin`, `maintain`\s+or `write`/.test(declines), 'any reply can decline a finding');
+  assert.ok(core.includes('Prior threads: <absolute path'), 'judge brief lost the Prior threads slot');
+  // the template, the validator and the skill must agree on the optional Declined line.
+  assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('<Declined line'));
+  assert.ok(read('skills', 'inquest', 'check-sticky.sh').includes("'<Declined line'"));
+});
+
+test('the lanes look past the diff where the risk is', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  for (const scan of ['**Risk areas** (lane A)', '**Blast radius** (lane B)', '**Contradictions** (lane C)']) {
+    assert.ok(core.includes(scan), `Review lost the ${scan} scan`);
+  }
+  assert.ok(core.includes('A hand-written migration is never skipped'), 'Skip hides hand-written migrations again');
+  assert.ok(/operability/.test(core), 'Maintainability lost operability');
+  assert.ok(core.includes('\nSince: <'), 'lane brief lost the Since line');
+  assert.ok(read('skills', 'inquest', 'SKILL.md').includes('merge-base --is-ancestor "$PREV"'), 'inquest lost the fix-commit scope');
 });
