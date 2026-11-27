@@ -69,7 +69,7 @@ test('razor-activate finds the skill body where it looks for it', () => {
 test('review-core carries every load-bearing heading', () => {
   const core = read('skills', 'scrutiny', 'review-core.md');
   for (const h of ['## Scope resolution', '## Load criteria', '## Load intent', '## Review', '## Dispatch',
-                   '## Judge', '## Score', '## PR hygiene', '## Standard criteria fallback']) {
+                   '## Judge', '## Prove', '## Score', '## PR hygiene', '## Standard criteria fallback']) {
     assert.ok(core.includes(`\n${h}\n`), `review-core lost heading "${h}"`);
   }
 });
@@ -360,4 +360,19 @@ test('a lane that never reports blocks the approve', () => {
   const skill = read('skills', 'inquest', 'SKILL.md');
   assert.ok(core.includes('not covered — <reason>'), 'core lost the not-covered lane line');
   assert.ok(/Rule 3 — coverage gate/.test(skill), 'inquest lost the coverage gate');
+});
+
+test('Prove runs each Critical and Warning, and only code the user may trust', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const prove = core.slice(core.indexOf('\n## Prove\n'), core.indexOf('\n## Score\n'));
+  // running a stranger's PR on the user's machine is the risk this rule closes.
+  assert.ok(/`admin`, `maintain`\s+or `write`/.test(prove), 'Prove lost the author-permission rule');
+  assert.ok(prove.includes('.prove/') && prove.includes('status\n--porcelain'), 'Prove lost the scratch check');
+  assert.ok(/never `fork`/.test(prove), 'provers may fork');
+  for (const r of ['proven', 'plausible', 'rejected']) assert.ok(prove.includes(`${r} `), `Prove lost the ${r} outcome`);
+  // the judge, not the orchestrator, applies the outcomes and scores.
+  assert.ok(core.includes('Score: pending prove'), 'judge no longer waits for Prove');
+  for (const caller of ['skills/scrutiny/SKILL.md', 'skills/inquest/SKILL.md']) {
+    assert.ok(/"Prove" in `(?:review-core\.md|\$CORE)`/.test(read(...caller.split('/'))), `${caller} does not run "Prove"`);
+  }
 });

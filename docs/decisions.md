@@ -131,3 +131,16 @@ Constraint: each `terminal-browser action` call reconnects, so `open` and
 back before every command.
 Rejected: a split pane — the video takes the pane shape (a full-width bottom
 split recorded 5760×1154).
+
+## 2026-11-27 — The review proves each Critical and Warning by running a repro
+Why: the judge verifies by reading, so the review still trusts its own
+claims. A fresh prover per Critical and Warning writes a failing test or a
+script under `.prove/`, runs it, and returns proven, plausible or rejected.
+The judge applies the outcome and scores; the orchestrator still changes
+nothing.
+Rule: a repro runs code from the change, so provers run only in local mode
+or when the PR author has write access. The tree status must match before
+and after.
+Rejected: proving Suggestions and Nits — the cost buys no merge decision.
+Rejected: the judge runs the repros itself — one agent in series, and the
+judge would grade its own experiment.

@@ -112,7 +112,7 @@ it posts.
 **Violating the letter of these rules is violating their spirit.**
 
 On invocation, create one TodoWrite todo per line below, in order. No TodoWrite
-tool in the session → print the 11 items as a markdown checklist instead, and
+tool in the session → print the 12 items as a markdown checklist instead, and
 print it again with its states before any Phase 8 write. Mark an item complete
 only after the work is done and its evidence exists. Never merge, reorder, or
 drop items. Never start a Phase 8 write while an earlier item is open.
@@ -128,13 +128,15 @@ drop items. Never start a Phase 8 write while an earlier item is open.
    distrust passes, or a lane is recorded as not covered
 6. Phase 6 — Codex result collected at the PR head SHA (CLI output, or the
    user's pasted chat output), or the recorded reason confirmed
-7. Phase 7 — judge returned: merged findings + score on 0–10, adopted
-   unchanged
-8. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
+7. Phase 7 — judge returned: merged findings, adopted unchanged
+8. Phase 7 — Prove: one prover per Critical and Warning (or the trust skip
+   recorded), scratch status unchanged, judge returned the final score on
+   0–10
+9. Phase 8 — sticky.md copied from template, filled, `check-sticky.sh` printed
    `OK`
-9. Phase 8 — pre-post gate: every item confirmed by running its command
-10. Phase 8 — user confirmed the post
-11. Phase 8 — post (or `--dry-run` print), then the watcher started or its
+10. Phase 8 — pre-post gate: every item confirmed by running its command
+11. Phase 8 — user confirmed the post
+12. Phase 8 — post (or `--dry-run` print), then the watcher started or its
     skip reason printed
 
 ## Non-negotiables
@@ -356,8 +358,21 @@ REVIEW.md, else `$CORE` "Score" (start at 10; Critical −3..−5, Warning
 −1..−2, missing tests −1; floor 1). Non-0–10 rubric → normalize to 0–10
 before comparing. Approve threshold is 9.
 
+The judge ends with `Score: pending prove` → run "Prove" in `$CORE` in the
+`bench` worktree. Get the author's permission first; a bot or an unknown
+login has none:
+
+```bash
+PERM=$(gh api "repos/$OWNER/$REPO/collaborators/$PR_AUTHOR/permission" -q .permission 2>/dev/null || echo none)
+```
+
+Send the prover results to the judge per "Judge" in `$CORE`, step 5. Its
+second report is final.
+
 Map `sources` to the sticky label: lanes and Codex → `(both)`; lanes only →
-`(primary)`; Codex only → `(codex)`. Adopt findings and score unchanged.
+`(primary)`; Codex only → `(codex)`. Add the proof state after it:
+`(primary, proven)`, `(both, not proven)`. Adopt findings and score
+unchanged.
 
 ## Phase 8 — Output and side effects
 
@@ -456,7 +471,8 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   it. On a re-run, lead with what changed since the last reviewed SHA and
   which prior findings are now fixed.
 - Findings: one line each — `- [Severity] \`file:line\` — failure mode + fix
-  direction. (source)`. Never restate the inline thread body.
+  direction. (source, proof state)`. Never restate the inline thread body.
+  The inline thread of a proven finding quotes its `repro` command.
 - One sentence for the cleared passes ("Four lanes, Codex and the judge
   ran in fresh sessions; prior threads verified, not re-raised."). The
   in-session fallback from `$CORE` "Dispatch" is named here when it fired,
