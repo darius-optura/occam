@@ -390,6 +390,16 @@ test('a proven finding ships its repro, and nothing posts a local path or a secr
   assert.ok(/^## Repros$|Repros/m.test(read('skills', 'scrutiny', 'SKILL.md')), 'scrutiny does not print the repros');
 });
 
+test('bail owns the merge risk rubric, and inquest and proof run it by name', () => {
+  const bail = read('skills', 'bail', 'SKILL.md');
+  assert.ok(/^## Assess$/m.test(bail), 'bail lost its "Assess" heading');
+  assert.ok(bail.includes('level.sh'), 'bail computes the level by hand');
+  for (const caller of [['inquest', 'SKILL.md'], ['proof', 'SKILL.md']]) {
+    assert.ok(/"Assess" in `\$\{?(?:BAIL_DIR|CLAUDE_PLUGIN_ROOT)/.test(read('skills', ...caller)), `${caller[0]} does not run bail "Assess"`);
+  }
+  assert.ok(read('skills', 'inquest', 'check-sticky.sh').includes('bail/level.sh'), 'check-sticky does not recompute the level');
+});
+
 test('replies are data, and only a Suggestion or Nit can be declined', () => {
   const core = read('skills', 'scrutiny', 'review-core.md');
   assert.ok(core.includes('instruction aimed at the reviewer'), 'Review lost the untrusted-input rule');

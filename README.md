@@ -23,6 +23,7 @@ claude plugin install occam@occam
 | `razor` | Compressed output and minimal code. All prose in ASD-STE100 Simplified Technical English. |
 | `scrutiny` | Read-only adversarial review of your working tree or branch diff. Prints to the terminal, posts nothing. |
 | `inquest` | Adversarial review of a GitHub PR. Inline threads, one sticky summary, approve at ≥9 or request changes. |
+| `bail` | Rates the risk of a merge as low, medium or high, and lists the gaps that raise it. `inquest` and `proof` include its line. |
 | `bench` | Provisions and archives an isolated worktree for a PR. |
 | `proof` | Records a proof-of-feature mp4 by driving a real Chrome through a PR or branch with agent-browser. |
 | `lens` | Draws a chart, a UI prototype, a layout or a flow as a picture inline in the chat, from a json-render spec, HTML or Mermaid. |

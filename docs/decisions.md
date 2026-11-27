@@ -181,3 +181,7 @@ A Rex session that is off screen leaves the pane at the 80×24 default, 640×384
 ## 2026-11-27 — A proven finding posts its repro
 Why: the inline thread quoted `pytest .prove/2/test_x.py`, a file deleted after the review, so the author could not run the proof. The prover now returns its source with paths relative to the repo; inquest posts it in a collapsed Repro block, scrutiny prints it, and a copy stays in `$TMPDIR/prove-<sha>/`. Posted code can carry a local path or a token, so `check-leaks.sh` gates every posted text.
 Rejected: keep `.prove/` in the repo — the clean-tree check and the read-only rule forbid it. Commit the repro to the PR branch — the review never writes to the author's branch.
+
+## 2026-11-27 — Merge risk is its own skill, bail, next to the defect score
+Why: merge confidence counts defects; it does not say what a wrong merge costs. `bail` rates alignment, impact, verification, rollback and error detection, after warpdotdev's `merge-risk`. `inquest` and `proof` run its "Assess" section by name, and `level.sh` computes the level so the weights never depend on the model. The line informs; it does not move the score or the event.
+Rejected: fold the rubric into review-core — a separate skill also runs on its own and inside `proof`. Gate the approve on high risk — not until the line has a track record.

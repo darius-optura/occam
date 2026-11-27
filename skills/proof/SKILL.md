@@ -356,4 +356,11 @@ gaps: <none | list>
 server: <reused | started+stopped>
 trimmed: <s removed | 0s (disabled)>
 loom: <share URL | skipped — <reason> | not requested>
+risk: <the Merge risk line from bail, then its gap lines | skipped — no PR>
 ```
+
+`risk:` comes from "Assess" in `${CLAUDE_PLUGIN_ROOT}/skills/bail/SKILL.md`,
+run in one fresh `general-purpose` subagent with the PR number,
+`BAIL_DIR=${CLAUDE_PLUGIN_ROOT}/skills/bail`, and the new recording as
+Verification evidence: the mp4 path and the chapters it covers. The line
+shows what risk remains after the recording.

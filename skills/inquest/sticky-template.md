@@ -4,6 +4,8 @@
 
 ### Merge confidence: <N>/10
 
+<Merge risk line and gap lines from bail "Assess", unchanged>
+
 <Assessment prose, 2-5 sentences: what the PR does, what blocks or clears it. On a re-run: what changed since the last reviewed SHA and which prior findings are now fixed. No headings, no boilerplate.>
 
 <Findings, only when findings exist — one line each:
