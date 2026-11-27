@@ -78,8 +78,8 @@ fallback in "Dispatch", and its `Reviewers:` line in the output.
 
 ## Phase 3: Judge
 
-Run "Judge" in `review-core.md` with the four lane reports verbatim and
-`External pass: none`. Run "Review" in `review-core.md` only through the
+Run "Judge" in `review-core.md` with the four lane reports verbatim,
+`External pass: none` and `Prior threads: none`. Run "Review" in `review-core.md` only through the
 lanes and the judge, never here.
 
 The judge ends with `Score: pending prove` → run "Prove" in `review-core.md`

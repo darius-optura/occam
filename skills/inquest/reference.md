@@ -44,6 +44,15 @@ while :; do
 done
 ```
 
+Each replier's permission, once per login. A bot or an unknown login has
+none, and its reply is never a decline:
+
+```bash
+for login in $(jq -r '.comments.nodes[].author.login' threads.jsonl | sort -u); do
+  printf '%s %s\n' "$login" "$(gh api "repos/$OWNER/$REPO/collaborators/$login/permission" -q .permission 2>/dev/null || echo none)"
+done > permissions.txt
+```
+
 One thread per line. `line` is null on an outdated thread; use `originalLine`.
 `databaseId` is the REST comment id: pass the first comment's as
 `in_reply_to_id` for a reply. A thread with no `databaseId` gets the "stay

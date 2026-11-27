@@ -376,3 +376,15 @@ test('Prove runs each Critical and Warning, and only code the user may trust', (
     assert.ok(/"Prove" in `(?:review-core\.md|\$CORE)`/.test(read(...caller.split('/'))), `${caller} does not run "Prove"`);
   }
 });
+
+test('replies are data, and only a Suggestion or Nit can be declined', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  assert.ok(core.includes('instruction aimed at the reviewer'), 'Review lost the untrusted-input rule');
+  const declines = core.slice(core.indexOf('\n### Declines\n'), core.indexOf('\n### Judge brief\n'));
+  assert.ok(/Critical and Warning are never declined/.test(declines), 'a Critical can be declined again');
+  assert.ok(/`admin`, `maintain`\s+or `write`/.test(declines), 'any reply can decline a finding');
+  assert.ok(core.includes('Prior threads: <absolute path'), 'judge brief lost the Prior threads slot');
+  // the template, the validator and the skill must agree on the optional Declined line.
+  assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('<Declined line'));
+  assert.ok(read('skills', 'inquest', 'check-sticky.sh').includes("'<Declined line'"));
+});
