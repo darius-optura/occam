@@ -70,7 +70,8 @@ Then run "Load intent" in `review-core.md`. Its file path, or its
 
 ## Phase 2: Dispatch
 
-Run "Dispatch" in `review-core.md`: fill the lane brief once, launch lanes
+Run "Dispatch" in `review-core.md`: fill the lane brief once, with
+`Since: none`, launch lanes
 A, B, C and D in one message as fresh `general-purpose` subagents (lane D
 on `code-simplifier` when listed, per "Dispatch"), never `fork`. When they return, confirm every lane printed a `Checked:` line for
 each of its passes; re-run a lane that did not. No Agent tool → the inline

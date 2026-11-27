@@ -388,3 +388,14 @@ test('replies are data, and only a Suggestion or Nit can be declined', () => {
   assert.ok(read('skills', 'inquest', 'sticky-template.md').includes('<Declined line'));
   assert.ok(read('skills', 'inquest', 'check-sticky.sh').includes("'<Declined line'"));
 });
+
+test('the lanes look past the diff where the risk is', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  for (const scan of ['**Risk areas** (lane A)', '**Blast radius** (lane B)', '**Contradictions** (lane C)']) {
+    assert.ok(core.includes(scan), `Review lost the ${scan} scan`);
+  }
+  assert.ok(core.includes('A hand-written migration is never skipped'), 'Skip hides hand-written migrations again');
+  assert.ok(/operability/.test(core), 'Maintainability lost operability');
+  assert.ok(core.includes('\nSince: <'), 'lane brief lost the Since line');
+  assert.ok(read('skills', 'inquest', 'SKILL.md').includes('merge-base --is-ancestor "$PREV"'), 'inquest lost the fix-commit scope');
+});

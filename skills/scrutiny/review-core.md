@@ -68,7 +68,9 @@ five categories the CI reviewer uses, so coverage matches:
 1. **Security** — XSS, injection, auth bypass, secrets exposure
 2. **Logic** — bugs, race conditions, incorrect assumptions, edge cases
 3. **Performance** — N+1 queries, unnecessary re-renders, missing indexes
-4. **Maintainability** — convention violations, dead code, unclear naming
+4. **Maintainability** — convention violations, dead code, unclear naming,
+   architecture regression (new coupling, a layer bypassed), operability
+   (logging, error reporting, config, metrics), contradicting instructions
 5. **Testing** — missing coverage for new logic, broken test assumptions
 
 ## Load intent
@@ -172,6 +174,20 @@ one, every time, stating what you checked:
    dense one-liners), or removes an abstraction that already earns its
    keep.
 
+Three scans go deeper than the diff. Each lane runs the one it owns:
+
+- **Risk areas** (lane A). Read these with extra care: database migrations
+  and schema changes (data loss, long locks, no way back), crypto, sessions
+  and RBAC, raw SQL, file paths built from input (traversal), payments and
+  money.
+- **Blast radius** (lane B). For each exported symbol the diff changes —
+  signature, return shape, thrown errors, side effects — find its callers
+  with `git grep` and check that each still works. Put a broken caller on
+  the changed line in the diff, and name the caller in `evidence`.
+- **Contradictions** (lane C). Two instructions in the change that cannot
+  both hold: docs, prompts, config, skill text, or a comment against the
+  code.
+
 Every finding carries:
 
 - **Severity** — using REVIEW.md's levels if defined, else the standard
@@ -185,7 +201,8 @@ Every finding carries:
 
 Skip these unless REVIEW.md says otherwise:
 
-- Generated files (migrations, lock files, auto-generated types)
+- Generated files (generated migrations, lock files, auto-generated types).
+  A hand-written migration is never skipped.
 - Vendor / third-party code
 - Formatting-only changes (the formatter owns these)
 
@@ -218,9 +235,9 @@ in the output. Never fall back silently.
 
 | Lane | Categories | Distrust passes |
 |------|------------|-----------------|
-| A — trust boundaries | Security | 2 Auth missing/bypassed · 3 Hardcoded secrets · 6 Missing input validation |
-| B — behaviour | Logic · Performance · Testing | 1 Tests weakened |
-| C — hygiene | Maintainability | 4 Dead "compat" code · 5 Scope smuggling · 7 Comment rot |
+| A — trust boundaries | Security · risk areas | 2 Auth missing/bypassed · 3 Hardcoded secrets · 6 Missing input validation |
+| B — behaviour | Logic · Performance · Testing · blast radius | 1 Tests weakened |
+| C — hygiene | Maintainability · contradictions | 4 Dead "compat" code · 5 Scope smuggling · 7 Comment rot |
 | D — simplicity | Maintainability | 8 Over-building (YAGNI) |
 
 Every lane also runs the always-flag scan; the judge dedups the overlap.
@@ -240,6 +257,7 @@ seen this change before, and you owe its author nothing.
 
 Repo: <absolute path to the checkout or worktree>
 Scope: <exact git diff command with pinned SHAs, e.g. git diff <BASE_SHA>...<HEAD_SHA>>
+Since: <git diff <PREV_SHA>..<HEAD_SHA> on a later round, or "none">
 Purpose: <one line — PR title, or "no stated purpose (working tree)">
 Intent: <absolute path to the intent file from "Load intent", or "none — <reason>">
 Core: <absolute path to review-core.md>
@@ -253,7 +271,9 @@ Criteria: REVIEW.md <path or "absent"> · CLAUDE.md <paths or "none"> · stack c
 3. Your lane: <lane letter — categories and numbered distrust passes, copied
    from the lane's table row>. Walk the diff through your categories, run
    the always-flag scan, then run each of your distrust passes, stating what
-   you checked. Do not review outside your lane.
+   you checked. Do not review outside your lane. When Since is a command,
+   read that diff with extra care: fix commits are where regressions hide.
+   Your findings still cover the whole Scope.
 4. Return only this, nothing else:
 
    Checked: <pass or scan name> — <finding count, or "none found">

@@ -274,8 +274,22 @@ of REVIEW.md, the CLAUDE.md chain and the stack checklist
 Run "Load intent" in `$CORE` with the PR body and the branch name. Record
 its `Intent:` line for the sticky.
 
+A later round reviews the fix commits on their own too. The last reviewed
+SHA is the `Head` in the existing sticky:
+
+```bash
+PREV=$(gh api "repos/$OWNER/$REPO/issues/<N>/comments" --paginate \
+  -q '.[] | select(.body | contains("<!-- inquest:sticky -->")) | .body' \
+  | sed -n 's/^Head `\([0-9a-f]*\)`.*/\1/p' | head -1)
+[ -n "$PREV" ] && [ "$PREV" != "$HEAD_SHA" ] && git merge-base --is-ancestor "$PREV" "$HEAD_SHA" \
+  && echo "Since: git diff $PREV..$HEAD_SHA" || echo "Since: none"
+```
+
+A force-push that drops `PREV` from the history gives `Since: none`; the
+full diff still runs.
+
 Then run "Dispatch" in `$CORE`: fill the lane brief with the worktree path,
-`git diff <BASE_SHA>...<HEAD_SHA>`, the PR title, the intent file path or
+`git diff <BASE_SHA>...<HEAD_SHA>`, the `Since:` line, the PR title, the intent file path or
 `none — <reason>`, the absolute `$CORE` path
 and the criteria paths; launch lanes A, B, C and D in one message as fresh
 `general-purpose` subagents (lane D on `code-simplifier` when listed, per
