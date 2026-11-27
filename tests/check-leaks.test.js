@@ -7,10 +7,10 @@ const os = require('os');
 const path = require('path');
 
 const script = path.join(__dirname, '..', 'skills', 'inquest', 'check-leaks.sh');
-const check = text => {
+const check = (text, env = {}) => {
   const f = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'leaks-')), 'review.json');
   fs.writeFileSync(f, text);
-  const r = spawnSync('bash', [script, f], { encoding: 'utf8' });
+  const r = spawnSync('bash', [script, f], { encoding: 'utf8', env: { ...process.env, ...env } });
   return { code: r.status, out: r.stdout };
 };
 
@@ -23,6 +23,10 @@ for (const [name, leak] of [
   ['a macOS home path', '/Users/darius/Work/app/src/x.py'],
   ['a Linux home path', '/home/ci/app/src/x.py'],
   ['a macOS temp path', '/var/folders/78/abc/T/prove/1/t.py'],
+  ['a Linux temp path', '/tmp/prove-38820a96/1/t.py'],
+  ['a root home path', '/root/.ssh/id_rsa'],
+  ['a Windows path', 'C:\\Users\\bob\\app'],
+  ['a Windows path with forward slashes', 'C:/Users/bob/app'],
   ['a GitHub token', 'ghp_' + 'a'.repeat(36)],
   ['a fine-grained GitHub token', 'github_pat_' + 'A'.repeat(30)],
   ['an AWS key', 'AKIA' + 'ABCDEFGHIJKLMNOP'],
@@ -34,4 +38,21 @@ for (const [name, leak] of [
   const r = check(JSON.stringify({ body: `output: ${leak} here` }));
   assert.strictEqual(r.code, 1);
   assert.match(r.out, /^LEAK /m);
+});
+
+test('a Windows path as raw text fails', () => {
+  const r = check('output: C:\\Users\\bob\\app\n');
+  assert.strictEqual(r.code, 1);
+});
+
+test('the runtime HOME fails, wherever it lives', () => {
+  const r = check(JSON.stringify({ body: 'output: /opt/builder/app/x.py' }), { HOME: '/opt/builder' });
+  assert.strictEqual(r.code, 1);
+  assert.match(r.out, /LEAK .*HOME/);
+});
+
+test('a file it cannot read fails closed', () => {
+  const r = spawnSync('bash', [script, path.join(os.tmpdir(), 'no-such-review.json')], { encoding: 'utf8' });
+  assert.strictEqual(r.status, 1);
+  assert.match(r.stdout, /LEAK .*unreadable/);
 });
