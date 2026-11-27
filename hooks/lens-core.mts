@@ -31,7 +31,7 @@ export function parseInput(input: unknown): Input | { error: string } {
 
 export function buildPage(
   template: string,
-  { kind, source, theme, tokens, width, maxHeight }: Input & { theme: Theme; width: number; maxHeight: number },
+  { kind, source, theme, tokens, width, maxHeight }: Input & { theme: Theme; width: number | null; maxHeight: number | null },
 ): string {
   const config = JSON.stringify({ kind, source, theme, width, maxHeight }).replace(/</g, '\\u003c');
   return template
@@ -69,16 +69,35 @@ export function resolveTheme(setting: string | undefined, appleStyle: string): T
 
 export const sessionName = (sessionId: string): string => 'lens-' + sessionId.slice(0, 8);
 
+export const checkCommands = (png: string): string[][] => [
+  ['wait', '--fn', 'document.documentElement.dataset.lens'],
+  ['eval', 'JSON.stringify(window.__lens)'],
+  ['screenshot', '#lens', png],
+];
+
 export function batchCommands({ width, scale, theme, url, png }: { width: number; scale: number; theme: Theme; url: string; png: string }): string[][] {
   return [
     ['set', 'viewport', String(width + 32), '900', String(scale)],
     ['set', 'media', theme],
     ['open', url],
-    ['wait', '--fn', 'document.documentElement.dataset.lens'],
-    ['eval', 'JSON.stringify(window.__lens)'],
-    ['screenshot', '#lens', png],
+    ...checkCommands(png),
   ];
 }
+
+// The pane: a terminal-browser split beside the chat, in Rex only.
+export type Pane = { browser: string; tab?: string };
+export const PANE_LINE = 'shown in the lens pane';
+
+export const paneOpen = (browser: string | undefined, html: string): string[] =>
+  browser ? ['terminal-browser', 'new-tab', '--browser', browser, html] : ['terminal-browser', 'open', html, '--split', 'right'];
+
+export function paneTarget(stdout: string): Pane | null {
+  const m = stdout.match(/^opened (?:tab (\d+) in )?(\S+)/m);
+  return m ? { browser: m[2], tab: m[1] } : null;
+}
+
+export const paneAction = ({ browser, tab }: Pane): string[] =>
+  ['terminal-browser', 'action', '--browser', browser, ...(tab ? ['--tab', tab] : []), '--', 'batch', '--json'];
 
 type Step = { command: string[]; success: boolean; error: string | null; result: { result?: unknown } | null }
 

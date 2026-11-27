@@ -50,6 +50,13 @@ test('a running call or one with no picture draws only the row', async ($, on) =
   }
 })
 
+test('a picture shown in the lens pane stays out of the chat', async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount(row({ output: [{ type: 'text', text: 'shown in the lens pane\nerrors: none' }, OUTPUT[1]] }))
+  expect(await ui.find({ type: 'Image' })).toBeUndefined()
+  await ui.unmount()
+})
+
 test('another tool is left alone', async ($, on) => {
   engine(on)
   const ui = await $.ui.mount(row({ tool: 'Bash' }))

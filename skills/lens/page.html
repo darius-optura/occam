@@ -93,7 +93,9 @@
 <div id="lens"><!--LENS_HTML--></div>
 <script type="module">
 const lens = document.getElementById('lens')
-Object.assign(lens.style, { width: C.width + 'px', maxHeight: C.maxHeight + 'px', overflow: 'hidden', padding: '16px', boxSizing: 'border-box', background: 'var(--background)' })
+// No width: the page fills the lens pane and scrolls.
+Object.assign(lens.style, C.width ? { width: C.width + 'px', maxHeight: C.maxHeight + 'px', overflow: 'hidden' } : { minHeight: '100vh' },
+  { padding: '16px', boxSizing: 'border-box', background: 'var(--background)' })
 const frame = () => new Promise(r => requestAnimationFrame(r))
 
 async function drawSpec() {

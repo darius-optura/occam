@@ -1,25 +1,31 @@
 import type { Register } from 'claude-code'
 // The file is lens-core.mts: the engine and tsc map a .mjs import to it.
-import { batchCommands, buildPage, inlineReason, layout, parseBatch, parseInput, pngSize, resolveTheme, rowsFor, sessionName } from './lens-core.mjs'
+import {
+  batchCommands, buildPage, checkCommands, inlineReason, layout, PANE_LINE, paneAction, paneOpen, paneTarget, parseBatch, parseInput, pngSize,
+  resolveTheme, rowsFor, sessionName, type Pane,
+} from './lens-core.mjs'
 
 const TOOL = 'mcp__occam__lens'
 const MAX_PNG_BYTES = 2 * 1024 * 1024
 
 type ImageBlock = { type: 'image'; source: { type: 'base64'; media_type: 'image/png'; data: string } }
 const imageOf = (output: unknown): string | undefined =>
-  Array.isArray(output) ? (output.find((b: any) => b?.type === 'image') as ImageBlock | undefined)?.source?.data : undefined
+  Array.isArray(output) && !output.some((b: any) => b?.type === 'text' && b.text?.startsWith(PANE_LINE))
+    ? (output.find((b: any) => b?.type === 'image') as ImageBlock | undefined)?.source?.data
+    : undefined
 
 // The ToolUse hook sees the chat width; tool.call does not. The hook runs while
 // the input streams, so the width is known before the call starts.
 let lastColumns: number | undefined
 let renders = 0
+let pane: Pane | undefined
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.tool.register({
       name: 'lens',
       description:
-        'Draw a picture inline in the chat: a json-render spec (shadcn components and charts), custom HTML, or Mermaid. ' +
+        'Draw a picture inline in the chat, or live and interactive in a Rex browser pane: a json-render spec (shadcn components and charts), custom HTML, or Mermaid. ' +
         'Returns the picture to you, with page errors and a clipped flag. Read the occam lens skill before the first call.',
       inputSchema: {
         type: 'object',
@@ -39,7 +45,7 @@ export const register: Register = on => {
     const input = parseInput(e)
     if ('error' in input) return { deny: input.error }
 
-    const [setting, apple, tmp, force, termProgram, term, sid] = await Promise.all([
+    const [setting, apple, tmp, force, termProgram, term, sid, rex] = await Promise.all([
       $.settings.read({ key: 'theme' }).catch(() => undefined),
       $.process.run(['defaults', 'read', '-g', 'AppleInterfaceStyle']).then(r => (r.exitCode === 0 ? r.stdout : ''), () => ''),
       $.env.get('TMPDIR'),
@@ -47,6 +53,7 @@ export const register: Register = on => {
       $.env.get('TERM_PROGRAM'),
       $.env.get('TERM'),
       $.session.id(),
+      $.env.get('REX_BLOCK'),
     ])
     const theme = resolveTheme(typeof setting === 'string' ? setting : undefined, apple)
     const name = sessionName(sid)
@@ -56,7 +63,29 @@ export const register: Register = on => {
     const png = `${dir}/${n}.png`
     const { width, maxHeight } = layout(lastColumns)
     const template = (await $.fs.read(`${$.plugin.root}/skills/lens/page.html`)) as string
-    await $.fs.write(html, buildPage(template, { ...input, theme, width, maxHeight }))
+    const write = (full: boolean) =>
+      $.fs.write(html, buildPage(template, { ...input, theme, ...(full ? { width: null, maxHeight: null } : { width, maxHeight }) }))
+    const readPng = async () => ((await $.fs.read(png, { as: 'bytes' })) as { base64: string }).base64
+
+    // In Rex, terminal-browser shows the full live page in a split; the picture goes only to the model.
+    const openPane = async (): Promise<Pane | undefined> => {
+      for (const browser of pane ? [pane.browser, undefined] : [undefined]) {
+        const r = await $.process.run(paneOpen(browser, html), { timeoutMs: 30000 }).catch(() => undefined)
+        const target = r?.exitCode === 0 ? paneTarget(r.stdout) : null
+        if (target) return (pane = target)
+      }
+    }
+    const target = rex ? (await write(true), await openPane()) : undefined
+    if (target) {
+      const r = await $.process.run(paneAction(target), { stdin: JSON.stringify(checkCommands(png)), timeoutMs: 60000 })
+      $.process.run(['terminal-browser', 'action', '--browser', target.browser, 'done']).catch(() => {})
+      const shot = parseBatch(r.stdout || r.stderr)
+      const data = shot.shot ? await readPng() : undefined
+      const text = [PANE_LINE, shot.errors.length ? ['errors:', ...shot.errors.map(x => `- ${x}`)].join('\n') : 'errors: none'].join('\n')
+      if (!data || data.length * 0.75 > MAX_PNG_BYTES) return { result: `${text}\nno picture: the screenshot failed or is over 2 MB.` }
+      return { result: [{ type: 'text', text }, { type: 'image', source: { type: 'base64', media_type: 'image/png', data } }] } as any
+    }
+    await write(false)
 
     const shoot = async (scale: number) => {
       const r = await $.process.run(['agent-browser', '--session', name, 'batch', '--json'], {
@@ -71,10 +100,10 @@ export const register: Register = on => {
     } catch (err) {
       return { deny: `agent-browser failed to start (${String(err)}). Run /lens --setup.` }
     }
-    let data = shot.shot ? ((await $.fs.read(png, { as: 'bytes' })) as { base64: string }).base64 : undefined
+    let data = shot.shot ? await readPng() : undefined
     if (data && data.length * 0.75 > MAX_PNG_BYTES) {
       shot = await shoot(1)
-      data = shot.shot ? ((await $.fs.read(png, { as: 'bytes' })) as { base64: string }).base64 : undefined
+      data = shot.shot ? await readPng() : undefined
     }
 
     const text = [

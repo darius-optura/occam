@@ -207,6 +207,10 @@ PNG inline with the kitty graphics protocol. Claude gets the same picture
 back and redraws one that is blank, clipped or wrong. razor sends a result
 through `lens` when a picture reads better, in the main session only.
 
+In Rex with `terminal-browser` installed, `lens` opens each picture in a new tab of a browser split beside
+the chat instead. The page is live there: no height limit, and its scripts
+answer clicks, so Claude can draw whole interactive visualizations.
+
 ```bash
 /lens --setup        # checks agent-browser and the terminal setting
 ```

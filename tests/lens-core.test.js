@@ -42,6 +42,8 @@ test('buildPage fills the slots and cannot be closed by the source', () => {
   const cfg = JSON.parse(page.match(/const C = (.*)<\/script><div/)[1]);
   assert.deepStrictEqual(cfg, { kind: 'mermaid', source: 'a</script><!--b', theme: 'dark', width: 800, maxHeight: 600 });
   assert.ok(page.endsWith('<div id="lens"></div>'));
+  const full = JSON.parse(L.buildPage(t, { kind: 'spec', source: '{}', theme: 'dark', tokens: '', width: null, maxHeight: null }).match(/const C = (.*)<\/script><div/)[1]);
+  assert.strictEqual(full.width, null);
   const html = L.buildPage(t, { kind: 'html', source: '<b>hi</b>', theme: 'light', tokens: '', width: 800, maxHeight: 600 });
   assert.ok(html.endsWith('<div id="lens"><b>hi</b></div>'));
 });
@@ -92,6 +94,26 @@ test('batchCommands is the render sequence', () => {
     ['eval', 'JSON.stringify(window.__lens)'],
     ['screenshot', '#lens', '/t/p.png'],
   ]);
+});
+
+test('checkCommands reads the page an open tab shows', () => {
+  assert.deepStrictEqual(L.checkCommands('/t/p.png'), L.batchCommands({ width: 1, scale: 1, theme: 'dark', url: 'u', png: '/t/p.png' }).slice(3));
+});
+
+test('paneOpen opens a split once, then a tab in the same browser', () => {
+  assert.deepStrictEqual(L.paneOpen(undefined, '/t/1.html'), ['terminal-browser', 'open', '/t/1.html', '--split', 'right']);
+  assert.deepStrictEqual(L.paneOpen('67087-2', '/t/2.html'), ['terminal-browser', 'new-tab', '--browser', '67087-2', '/t/2.html']);
+});
+
+test('paneTarget reads the browser and tab from the open output', () => {
+  assert.deepStrictEqual(L.paneTarget('opened 67087-2 (terminal-browser ls for details)\n'), { browser: '67087-2', tab: undefined });
+  assert.deepStrictEqual(L.paneTarget('opened tab 2 in 67087-2 (terminal-browser ls for details)'), { browser: '67087-2', tab: '2' });
+  assert.strictEqual(L.paneTarget('terminal-browser: no browser 1-1. Running:'), null);
+});
+
+test('paneAction targets the tab lens opened', () => {
+  assert.deepStrictEqual(L.paneAction({ browser: 'b', tab: '2' }), ['terminal-browser', 'action', '--browser', 'b', '--tab', '2', '--', 'batch', '--json']);
+  assert.deepStrictEqual(L.paneAction({ browser: 'b' }), ['terminal-browser', 'action', '--browser', 'b', '--', 'batch', '--json']);
 });
 
 test('parseBatch reports page errors, failed steps and clipping', () => {

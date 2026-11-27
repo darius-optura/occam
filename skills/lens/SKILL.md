@@ -1,6 +1,6 @@
 ---
 name: lens
-description: Show a result as a picture inline in the chat — a chart, a UI prototype or mockup, a dashboard, a layout, or a flow diagram — drawn from a json-render spec, custom HTML, or Mermaid. Keeps pseudocode, call trees, file trees and diffs as text. Use when asked to "show me", "draw", "chart this", "mock up", "prototype", or when a picture reads better than a table. `/lens --setup` checks the renderer and the terminal setting.
+description: Show a result as a picture inline in the chat, or live and interactive in a Rex browser pane — a chart, a UI prototype or mockup, a dashboard, a layout, or a flow diagram — drawn from a json-render spec, custom HTML, or Mermaid. Keeps pseudocode, call trees, file trees and diffs as text. Use when asked to "show me", "draw", "chart this", "mock up", "prototype", or when a picture reads better than a table. `/lens --setup` checks the renderer and the terminal setting.
 argument-hint: "[--setup | what to show]"
 ---
 
@@ -58,8 +58,20 @@ Load the tool once with ToolSearch (`select:mcp__occam__lens`), then call it:
 | `alt` | one sentence; shows where the picture cannot |
 | `tokens` | optional: the repo's design tokens as CSS, no `<` |
 
-The page is as wide as the chat and at most about 670 CSS px tall. Body text
-is 14 px. Use real labels and real data.
+Inline, the page is as wide as the chat and at most about 670 CSS px tall.
+Body text is 14 px. Use real labels and real data.
+
+### The lens pane
+
+In Rex with `terminal-browser` installed, lens opens each picture in a new tab
+of a browser split beside the chat. Nothing shows inline. The tab shows the
+live page: it fills the pane width, scrolls, and has no height limit. The user
+can click, hover, drag and type in it.
+
+Use this freedom. Make a whole interactive visualization in `"html"`: a
+slider that drives a chart, a filterable table, a diagram with steps, a
+prototype with state. Put the data in the source: the page loads no network
+data. The picture you get back is a screenshot of the tab, for your check only.
 
 ### Product look
 
@@ -133,6 +145,9 @@ shown inline            (or: not shown inline: … Run /lens --setup.)
 clipped: false
 errors: none            (or: errors: and one line per error)
 ```
+
+In the lens pane, the first line is `shown in the lens pane` and there is no
+`clipped:` line.
 
 Look at the picture every time. Then:
 
