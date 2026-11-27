@@ -1,6 +1,6 @@
 ---
 name: proof
-description: Record a proof-of-feature video with agent-browser. `/proof --setup` installs the tooling once per machine; `/proof --init` writes the repo's .claude/proof.json and prints the auth-profile commands; `/proof [pr|branch] [--loom] [story]` starts the dev server, logs in via auth profiles, walks the change in a recorded Chrome and writes an mp4; `--loom` also uploads it to Loom and prints the share link. Use when asked to "record a proof", "make the PoF video", or "/proof".
+description: Record a proof-of-feature video with agent-browser, live in a floating terminal-browser pane when in Rex. `/proof --setup` installs the tooling once per machine; `/proof --init` writes the repo's .claude/proof.json and prints the auth-profile commands; `/proof [pr|branch] [--loom] [story]` starts the dev server, logs in via auth profiles, walks the change in a recorded Chrome and writes an mp4; `--loom` also uploads it to Loom and prints the share link. Use when asked to "record a proof", "make the PoF video", or "/proof".
 argument-hint: "[--setup | --init | [pr-number | branch] [--loom] [story outline]]"
 allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
 ---
@@ -38,10 +38,10 @@ argument; strip it before the rest is parsed.
 
 ## Hard rules
 
-- Never type a password. Login only through `agent-browser auth login <profile>`.
+- Never type a password. Login only through `ab auth login <profile>`.
   Never ask for, read, or echo a password.
 - One tab for the whole walk. Close any extra tab and note the gap.
-- Never `agent-browser highlight`. It draws a red debugging outline that ends up in the
+- Never `ab highlight`. It draws a red debugging outline that ends up in the
   video. The pointer dot from `cursor.js` is the only marker.
 - Create only the data the feature itself creates. No fixtures, no cleanup writes.
 - Never `git add` the video or `.claude/proof.json`. `--init` writes; the developer commits.
@@ -51,7 +51,7 @@ argument; strip it before the rest is parsed.
 - Login happens before recording starts. Never run `auth login` while a recording runs:
   stop, log in, start the next segment. `proof_concat` joins the segments at the end.
 - If a chapter is unreachable, skip it and report the gap. Do not improvise unrelated clicks.
-- On any abort after the server step: `record stop` if recording, `agent-browser close`,
+- On any abort after the server step: `record stop` if recording, `proof_browser_close`,
   `proof_teardown`, then report the reason.
 - Shell state does not persist between Bash calls. Every block after run step 0 starts with
   `. "$HOME/.claude/proof/out/run-current.env"`. Run each fenced block as one Bash call.
@@ -244,19 +244,29 @@ proof_alive
 # capped at 103 bytes; a long checkout basename overflows it and every `open` fails.
 export AGENT_BROWSER_SESSION="proof-$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)"
 proof_set SESSION "$AGENT_BROWSER_SESSION" >/dev/null
-agent-browser --args "--force-device-scale-factor=1" open "$BASE_URL$LOGIN_PATH" --headed --init-script "$SKILL_DIR/cursor.js"
-agent-browser set viewport 1440 900
+if proof_pane_open "$BASE_URL$LOGIN_PATH"; then . "$HOME/.claude/proof/out/run-current.env"
+else agent-browser --args "--force-device-scale-factor=1" open "$BASE_URL$LOGIN_PATH" --headed --init-script "$SKILL_DIR/cursor.js"; fi
+ab set viewport 1440 900
 first_profile=${USER_PROFILES%% *}
-agent-browser auth login "$first_profile"
-agent-browser wait 1500
-agent-browser get url
+ab auth login "$first_profile"
+ab wait 1500
+ab get url
 ```
 
 If the printed URL still contains `LOGIN_PATH`: `snapshot -i`, retry once with the
 selector flags from "Login via auth profiles" in `reference.md`. Still on the login
-page → `agent-browser close`, `proof_teardown`, STOP with the reason.
+page → `proof_browser_close`, `proof_teardown`, STOP with the reason.
+
+In Rex with `terminal-browser` installed, `proof_pane_open` starts the browser in a
+floating pane in front of the session. The developer watches the walk live, and the
+splits behind it keep their size. The viewport stays 1440×900 whatever the pane size.
+Elsewhere, a headed agent-browser window opens as before.
 
 Every later block exports `AGENT_BROWSER_SESSION="$SESSION"` after sourcing run state.
+Drive the browser only through `ab`, which `proof.sh` defines. It sends each command to
+the pane's tab when `TB_KEY` is set, and to agent-browser when it is not. Through the pane,
+`ab` puts the viewport and `cursor.js` back before each command, because a page load in
+the pane drops them.
 
 ### 5. Record
 
@@ -266,20 +276,20 @@ The video is recorded in segments, one per logged-in user, and joined at the end
 ```bash
 set -e
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
-agent-browser record start "$(proof_seg_next)"
+ab record start "$(proof_seg_next)"
 ```
 
 ### 6. Walk
 
 Per chapter, following "Snapshot and refs" in `reference.md`:
 
-1. `agent-browser eval "window.__proofChapter('<title>')"` then `agent-browser wait 1300`.
-2. `agent-browser snapshot -i`; pick the ref.
-3. `agent-browser hover @ref`, `wait 400`, then `click @ref` or `fill @ref <text>` or
+1. `ab eval "window.__proofChapter('<title>')"` then `ab wait 1300`.
+2. `ab snapshot -i`; pick the ref.
+3. `ab hover @ref`, `wait 400`, then `click @ref` or `fill @ref <text>` or
    `press <key>`.
-4. `agent-browser wait 700` between actions. Streams: `wait "<end text>"`; without stable
+4. `ab wait 700` between actions. Streams: `wait "<end text>"`; without stable
    end text, loop `wait 30000` plus `snapshot -i`, at most four times.
-5. Batch independent steps in one `agent-browser batch "…" "…"` call.
+5. Batch independent steps in one `ab batch "…" "…"` call.
 
 Switch user chapter. Show the chapter card, sign out through the `LOGOUT_PATH` control
 or the user menu, confirm the login page appears. Then run this as one Bash call:
@@ -287,11 +297,11 @@ or the user menu, confirm the login page appears. Then run this as one Bash call
 ```bash
 set -e
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
-agent-browser record stop
-agent-browser auth login '<next profile>'
-agent-browser wait 1500
-agent-browser get url
-agent-browser record start "$(proof_seg_next)"
+ab record stop
+ab auth login '<next profile>'
+ab wait 1500
+ab get url
+ab record start "$(proof_seg_next)"
 ```
 
 `auth login` while a recording runs kills the screencast silently; frames stop, the walk
@@ -309,8 +319,8 @@ makes a raw take long. The re-encode takes roughly a tenth of the video's length
 
 ```bash
 . "$HOME/.claude/proof/out/run-current.env"; . "$SKILL_DIR/proof.sh"; export AGENT_BROWSER_SESSION="$SESSION"
-agent-browser record stop || true
-agent-browser close || true
+ab record stop || true
+proof_browser_close || true
 proof_concat && proof_trim_stills "$MP4_OUT" && proof_move_video "$MP4_OUT" || echo "no video to move"
 proof_teardown
 . "$HOME/.claude/proof/out/run-current.env"

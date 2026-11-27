@@ -106,3 +106,59 @@ test('proof_slug is filesystem safe', () => {
     { encoding: 'utf8' }).trim();
   assert.strictEqual(out, 'feat-abc-123-re-request-flow');
 });
+
+// Fake rex and terminal-browser that log their args and stdin, so the pane path runs anywhere.
+function paneBin() {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-bin-'));
+  const log = path.join(dir, 'calls.log');
+  fs.writeFileSync(path.join(dir, 'rex'), `#!/bin/sh
+echo "rex $*" >> "${log}"; cat >> "${log}"; echo
+case "$*" in *new_layer*) echo '{"layer_id":"layer:L","block_ids":["block:B"],"revision":1}' ;; esac
+`, { mode: 0o755 });
+  fs.writeFileSync(path.join(dir, 'terminal-browser'), `#!/bin/sh
+echo "tb $*" >> "${log}"
+case "$1" in
+  ls) echo '{"browsers":[{"key":"9-1","pane":{"pane":"block:A"}},{"key":"9-2","pane":{"pane":"block:B"}}]}' ;;
+  action) [ "$5" = batch ] && cat >> "${log}"; echo ok ;;
+esac
+`, { mode: 0o755 });
+  return { dir, log };
+}
+
+test('proof_pane_open floats a terminal-browser and ab drives its tab', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const { dir, log } = paneBin();
+  const run = (cmd, env = {}) => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe', env: { ...process.env, PATH: `${dir}:${process.env.PATH}`, REX_BLOCK: 'block:me', ...env } }).trim();
+  run(`proof_set SKILL_DIR "${root}/skills/proof"`);
+
+  run('proof_pane_open http://localhost:3000/login');
+  const state = fs.readFileSync(`${home}/out/run-current.env`, 'utf8');
+  assert.match(state, /^TB_KEY='9-2'$/m);
+  assert.match(state, /^LAYER='layer:L'$/m);
+  const calls = fs.readFileSync(log, 'utf8');
+  assert.match(calls, /rex api call -s block:me session.new_layer -/);
+  assert.match(calls, /"command":\["terminal-browser","open","--no-merge","http:\/\/localhost:3000\/login"\]/);
+
+  fs.writeFileSync(log, '');
+  run(`. "${home}/out/run-current.env"; ab click @e3`);
+  const ab = fs.readFileSync(log, 'utf8');
+  assert.match(ab, /tb action --browser 9-2 -- batch --json\n\[\["set","viewport","1440","900"\],\["eval","\/\/ cursor\.js/);
+  assert.match(ab, /tb action --browser 9-2 -- click @e3\n/);
+
+  fs.writeFileSync(log, '');
+  run(`. "${home}/out/run-current.env"; proof_browser_close`);
+  assert.match(fs.readFileSync(log, 'utf8'), /session.close_layer -\n\{"layer_id":"layer:L"\}/);
+});
+
+test('proof_pane_open declines outside Rex, and ab falls back to agent-browser', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'proof-home-'));
+  const { dir, log } = paneBin();
+  fs.writeFileSync(path.join(dir, 'agent-browser'), `#!/bin/sh\necho "ab $*" >> "${log}"\n`, { mode: 0o755 });
+  const run = cmd => execFileSync('sh', ['-c', `export PROOF_HOME="${home}"; unset REX_BLOCK; . "${sh}"; ${cmd}`],
+    { encoding: 'utf8', stdio: 'pipe', env: { ...process.env, PATH: `${dir}:${process.env.PATH}` } }).trim();
+  run(`proof_set SKILL_DIR "${root}/skills/proof"`);
+  assert.throws(() => run('proof_pane_open http://x'), e => e.status === 1 && e.stderr === '');
+  run('ab wait 100; proof_browser_close');
+  assert.strictEqual(fs.readFileSync(log, 'utf8'), 'ab wait 100\nab close\n');
+});

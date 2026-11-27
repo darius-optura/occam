@@ -242,12 +242,12 @@ test('proof keeps the fixes from the first acceptance run', () => {
   assert.ok(/AGENT_BROWSER_SESSION="proof-\$\(printf '%s' "\$REPO_ROOT" \| cksum/.test(skill), 'session name lost the hash');
   // auth login during a recording kills the screencast; the switch must stop first.
   const sw = skill.slice(skill.indexOf('Switch user chapter'));
-  const stop = sw.indexOf('agent-browser record stop'), login = sw.indexOf('agent-browser auth login');
-  const start = sw.indexOf('agent-browser record start');
+  const stop = sw.indexOf('ab record stop'), login = sw.indexOf('ab auth login');
+  const start = sw.indexOf('ab record start');
   assert.ok(stop > -1 && login > stop && start > login, 'user switch must stop, log in, then start');
   assert.ok(skill.includes('proof_concat'), 'segments are never joined');
   // highlight is a debugging aid that paints a red outline into the video.
-  assert.ok(!/agent-browser highlight @/.test(skill), 'highlight is back in the walk');
+  assert.ok(!/(agent-browser|ab) highlight @/.test(skill), 'highlight is back in the walk');
   // the Bash tool is zsh; without shwordsplit every `for x in $LIST` loops once.
   const helper = read('skills', 'proof', 'proof.sh');
   assert.ok(helper.includes('setopt shwordsplit'), 'proof.sh lost the zsh word-split guard');

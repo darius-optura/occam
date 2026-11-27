@@ -89,7 +89,7 @@ export type Pane = { browser: string; tab?: string };
 export const PANE_LINE = 'shown in the lens pane';
 
 export const paneOpen = (browser: string | undefined, html: string): string[] =>
-  browser ? ['terminal-browser', 'new-tab', '--browser', browser, html] : ['terminal-browser', 'open', html, '--split', 'right'];
+  browser ? ['terminal-browser', 'new-tab', '--browser', browser, html] : ['terminal-browser', 'open', html, '--split', 'right', '--no-merge'];
 
 export function paneTarget(stdout: string): Pane | null {
   const m = stdout.match(/^opened (?:tab (\d+) in )?(\S+)/m);

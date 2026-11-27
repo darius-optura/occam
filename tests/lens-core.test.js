@@ -101,7 +101,7 @@ test('checkCommands reads the page an open tab shows', () => {
 });
 
 test('paneOpen opens a split once, then a tab in the same browser', () => {
-  assert.deepStrictEqual(L.paneOpen(undefined, '/t/1.html'), ['terminal-browser', 'open', '/t/1.html', '--split', 'right']);
+  assert.deepStrictEqual(L.paneOpen(undefined, '/t/1.html'), ['terminal-browser', 'open', '/t/1.html', '--split', 'right', '--no-merge']);
   assert.deepStrictEqual(L.paneOpen('67087-2', '/t/2.html'), ['terminal-browser', 'new-tab', '--browser', '67087-2', '/t/2.html']);
 });
 
