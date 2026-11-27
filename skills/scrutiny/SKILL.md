@@ -113,9 +113,13 @@ summary uses, so it is interchangeable with the GitHub version:
    Proof is the `repro` command, or `none — <why>`.
    Findings, severities and count come from the judge, unchanged.
 6. **Warnings (N)** — same table format.
-7. **Suggestions (N)** — numbered list with `file:line` references.
-8. **Security** — assessment, or "No security concerns found".
-9. **Files Reviewed** — table: `File | Changes`.
+7. **Repros (N)** — one block per proven finding, headed by its `#` and
+   `file:line`: the prover's source in a fence, the command, the output
+   lines. Then one line: `Kept: $TMPDIR/prove-<sha>/`, the copy from
+   "Prove", so the user can run a repro again after a fix.
+8. **Suggestions (N)** — numbered list with `file:line` references.
+9. **Security** — assessment, or "No security concerns found".
+10. **Files Reviewed** — table: `File | Changes`.
 
 If a section is empty, print the header with `(0)` and a single line
 ("No critical issues." / "No warnings." / etc.) so the structure is
@@ -123,7 +127,7 @@ predictable.
 
 Do NOT post anything to GitHub. Do NOT modify any files. Do NOT run
 formatters or linters. The provers are the one exception: they write and
-run repros under `.prove/`, and "Prove" deletes it and checks the tree is
-as it was.
+run repros under `.prove/`, and "Prove" copies it to `$TMPDIR`, deletes
+it, and checks the tree is as it was.
 If the user wants to apply fixes, they can ask separately and run their
 fix workflow.

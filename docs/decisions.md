@@ -177,3 +177,7 @@ host can zoom again.
 Why: terminal-browser stretches the page to fill its pane. A 1440×900 page in a pane of another shape looks stretched, and at scale 1 it fills a quarter of a Retina pane. The pane resizes to 16:10, the scale is the settled pane width over 1440, and the guard checks `innerWidth` is 1440.
 Rejected: scale 1 in the 0.9×0.9 pane — tiny page, wrong aspect. Read the size before the resize settles — the scale comes from the old pane and the page stretches again.
 A Rex session that is off screen leaves the pane at the 80×24 default, 640×384 px, so proof waits 30 s for a real size and then falls back to the headed window.
+
+## 2026-11-27 — A proven finding posts its repro
+Why: the inline thread quoted `pytest .prove/2/test_x.py`, a file deleted after the review, so the author could not run the proof. The prover now returns its source with paths relative to the repo; inquest posts it in a collapsed Repro block, scrutiny prints it, and a copy stays in `$TMPDIR/prove-<sha>/`. Posted code can carry a local path or a token, so `check-leaks.sh` gates every posted text.
+Rejected: keep `.prove/` in the repo — the clean-tree check and the read-only rule forbid it. Commit the repro to the PR branch — the review never writes to the author's branch.

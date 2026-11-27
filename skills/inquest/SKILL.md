@@ -419,7 +419,13 @@ failure → STOP, report, fix. No write call until all pass:
    ```bash
    bash "$SKILL_DIR/check-sticky.sh" sticky.md
    ```
-8. The PR head did not move since the review. Run it again right before the
+8. `check-leaks.sh` printed `OK` for every text that posts: no local
+   path, no token, no key. A hit in a repro → replace the path with one
+   relative to the repo, or drop the Repro block and keep `proof:`.
+   ```bash
+   bash "$SKILL_DIR/check-leaks.sh" review.json sticky.md
+   ```
+9. The PR head did not move since the review. Run it again right before the
    write, after the user confirms:
    ```bash
    [ "$(gh pr view <N> --json headRefOid -q .headRefOid)" = "$HEAD_SHA" ] && echo HEAD_OK
@@ -493,7 +499,29 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   which prior findings are now fixed.
 - Findings: one line each — `- [Severity] \`file:line\` — failure mode + fix
   direction. (source, proof state)`. Never restate the inline thread body.
-  The inline thread of a proven finding quotes its `repro` command.
+  The inline thread of a proven finding ends with the prover's repro, so
+  the author can run it (reference.md §5):
+
+  ````markdown
+  <details>
+  <summary>Repro</summary>
+
+  `.prove/2/test_total.py`
+  ```python
+  <the prover's source, verbatim>
+  ```
+
+  Run from the repo root: `<repro command>`
+  ```text
+  <the prover's output lines>
+  ```
+
+  </details>
+  ````
+
+  The blank lines inside `<details>` are load-bearing: without them GitHub
+  shows the fences as plain text. Plausible and rejected findings post no
+  Repro block.
 - Declined findings: one `Declined:` line, each `file:line` with the
   author's reason. Omit the line when nothing was declined.
 - One sentence for the cleared passes ("Four lanes, Codex and the judge

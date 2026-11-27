@@ -123,7 +123,9 @@ cat > review.json <<'JSON'
   "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\nRequest changes — three unaudited callsites. Score and detail in the sticky; findings in the inline threads.",
   "comments": [
     { "path": "src/foo.ts", "line": 42, "side": "RIGHT",
-      "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\n[Warning] <fix> — <named failure mode>" }
+      "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\n[Warning] <fix> — <named failure mode>" },
+    { "path": "src/cart.py", "line": 17, "side": "RIGHT",
+      "body": "> [!NOTE]\n> Posted by Claude on behalf of <NAME>.\n\n[Critical] <fix> — <named failure mode>\n\n<details>\n<summary>Repro</summary>\n\n`.prove/2/test_total.py`\n```python\n<source>\n```\n\nRun from the repo root: `<repro command>`\n```text\n<output>\n```\n\n</details>" }
   ]
 }
 JSON

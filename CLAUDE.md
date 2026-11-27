@@ -30,6 +30,7 @@ tests/razor-activate.test.js
 tests/razor-skill-gate.test.js
 tests/inquest-watch.test.js
 tests/bench-sweep.test.js
+tests/check-leaks.test.js
 tests/lens-core.test.js
 ```
 
@@ -224,7 +225,11 @@ distrust passes and all five categories; the invariants test checks the
 lane table. No Agent tool → the loud inline fallback, never a silent one.
 "Prove" sends each Critical and Warning to a fresh prover that runs a repro
 under `.prove/`; the judge applies the outcome and scores. Provers run only
-in local mode or when the PR author has write access.
+in local mode or when the PR author has write access. A proven finding
+carries the prover's source and output: inquest posts them in a collapsed
+Repro block on its inline thread, scrutiny prints them, and a copy stays in
+`$TMPDIR/prove-<sha>/`. `check-leaks.sh` gates every posted text for local
+paths and secrets.
 
 **lens draws only a finished call.** The ToolUse hook also runs while the
 input streams; an `Image` from a partial input makes the engine refuse the
