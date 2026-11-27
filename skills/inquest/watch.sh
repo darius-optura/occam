@@ -1,21 +1,24 @@
 #!/bin/sh
 # Watch a reviewed PR and start the next inquest round when it is ready.
 #
-# usage: watch.sh [--once] --repo OWNER/NAME --pr N --sha REVIEWED_SHA
+# usage: watch.sh [--once] [--archive-only] --repo OWNER/NAME --pr N --sha REVIEWED_SHA
 #                 [--path WT_PATH] [--pane HERDR_PANE] [--wt-id SUPACODE_WT]
 #                 [--rex-session REX_SESSION --rex-block REX_BLOCK]
 #
 # Ready = the author re-requested your review, or every thread inquest opened
 # is resolved and the head moved past REVIEWED_SHA. The watcher only starts
-# the round; that session still asks before it posts. --once prints one
-# decision and exits.
+# the round; that session still asks before it posts. A merged or closed PR
+# sends `/occam:bench --archive N` instead; bench refuses to remove unpushed
+# or uncommitted work. --archive-only skips the review signals (after an
+# approve). --once prints one decision and exits.
 set -u
 
 INTERVAL=${INQUEST_WATCH_INTERVAL:-600}
-ONCE=0 REPO= PR= SHA= WT= PANE= WTID= RSES= RBLK=
+ONCE=0 ONLY=0 REPO= PR= SHA= WT= PANE= WTID= RSES= RBLK=
 while [ $# -gt 0 ]; do
   case $1 in
     --once)  ONCE=1 ;;
+    --archive-only) ONLY=1 ;;
     --repo)  REPO=$2; shift ;;
     --pr)    PR=$2; shift ;;
     --sha)   SHA=$2; shift ;;
@@ -41,12 +44,13 @@ QUERY='query($owner:String!,$name:String!,$n:Int!){
     reviewThreads(first:100){nodes{isResolved comments(first:1){nodes{author{login} body}}}}
   }}}'
 
-# Prints one of: wait <why> | trigger rerequested | trigger resolved | stop <why>
+# Prints one of: wait <why> | trigger rerequested | trigger resolved
+#                | archive merged | archive closed | stop archived
 decide() {
   if [ -n "$WT" ] && [ ! -d "$WT" ]; then echo "stop archived"; return; fi
   json=$(gh api graphql -f query="$QUERY" -f owner="${REPO%%/*}" -f name="${REPO#*/}" -F n="$PR" 2>/dev/null) \
     || { echo "wait gh-failed"; return; }
-  printf '%s' "$json" | jq -r --arg sha "$SHA" '
+  printf '%s' "$json" | jq -r --arg sha "$SHA" --argjson only "$ONLY" '
     .data.viewer.login as $me
     | .data.repository.pullRequest as $p
     | [ $p.reviewThreads.nodes[]
@@ -55,32 +59,34 @@ decide() {
                    and ($c.body | contains("Posted by Claude on behalf of")))
         | select(.isResolved | not) ] | length
     | . as $open
-    | if $p.state != "OPEN" then "stop \($p.state | ascii_downcase)"
+    | if $p.state != "OPEN" then "archive \($p.state | ascii_downcase)"
+      elif $only == 1 then "wait open-pr"
       elif any($p.reviewRequests.nodes[]; .requestedReviewer.login == $me) then "trigger rerequested"
       elif $open == 0 and $p.headRefOid != $sha then "trigger resolved"
       elif $open > 0 then "wait open=\($open)"
       else "wait head-unchanged" end' 2>/dev/null || echo "wait bad-response"
 }
 
-trigger() {
-  prompt="/occam:inquest $PR"
+# send <why> <what> <prompt>: hand the prompt to the review session.
+send() {
+  why=$1 what=$2 prompt=$3
   if [ -n "$PANE" ] \
      && herdr agent wait "$PANE" --until idle >/dev/null 2>&1 \
      && herdr agent prompt "$PANE" "$prompt" >/dev/null 2>&1; then
-    echo "watch: PR #$PR $1, next round sent to pane $PANE"; return
+    echo "watch: PR #$PR $why, $what sent to pane $PANE"; return
   fi
   # -s goes with -b: a bare -b resolves inside the watcher's own REX_SESSION.
   if [ -n "$RSES" ] && [ -n "$RBLK" ] \
      && rex send -s "$RSES" -b "$RBLK" "$prompt" >/dev/null 2>&1 \
      && rex send-key -s "$RSES" -b "$RBLK" enter >/dev/null 2>&1; then
-    echo "watch: PR #$PR $1, next round sent to rex block $RBLK"; return
+    echo "watch: PR #$PR $why, $what sent to rex block $RBLK"; return
   fi
   if [ -n "$WTID" ] \
      && supacode tab new -w "$WTID" --title "inquest-$PR" --background \
           -i "claude '$prompt'" >/dev/null 2>&1; then
-    echo "watch: PR #$PR $1, next round opened in a supacode tab"; return
+    echo "watch: PR #$PR $why, $what opened in a supacode tab"; return
   fi
-  msg="PR #$PR $1. Run: cd ${WT:-<worktree>} && claude '$prompt'"
+  msg="PR #$PR $why. Run: cd ${WT:-<worktree>} && claude '$prompt'"
   command -v osascript >/dev/null 2>&1 \
     && osascript -e "display notification \"$msg\" with title \"inquest\"" >/dev/null 2>&1
   echo "watch: $msg"
@@ -92,7 +98,8 @@ while :; do
   echo "$(date '+%F %T') $d"
   case $d in
     stop*)    exit 0 ;;
-    trigger*) trigger "${d#trigger }"; exit 0 ;;
+    trigger*) send "${d#trigger }" "next round" "/occam:inquest $PR"; exit 0 ;;
+    archive*) send "${d#archive }" "archive" "/occam:bench --archive $PR"; exit 0 ;;
   esac
   sleep "$INTERVAL"
 done

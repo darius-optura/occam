@@ -29,6 +29,7 @@ tests/razor-config.test.js
 tests/razor-activate.test.js
 tests/razor-skill-gate.test.js
 tests/inquest-watch.test.js
+tests/bench-sweep.test.js
 tests/lens-core.test.js
 ```
 
@@ -174,8 +175,15 @@ post.
 `skills/inquest/watch.sh` in the background. It triggers the next round on a
 re-requested review, or on all inquest threads resolved plus a new head SHA.
 It only sends `/occam:inquest <N>` to the session; that round still asks
-before it posts. One watcher per PR, three rounds at most.
-`tests/inquest-watch.test.js` covers every decision with a fake `gh`.
+before it posts. One watcher per PR, three review rounds at most. A merged
+or closed PR sends `/occam:bench --archive <N>` instead, also after an
+approve (`--archive-only`). `tests/inquest-watch.test.js` covers every
+decision with a fake `gh`.
+
+**The sweep only reads.** `skills/bench/sweep.sh` marks a worktree `safe`
+only when its PR is merged or closed, the tree is clean, and `HEAD` is in
+the PR's history or on a remote. The removal goes through "Archive flow",
+which checks again. `tests/bench-sweep.test.js` builds real worktrees.
 
 **The sticky marker lives in four files.** `<!-- inquest:sticky -->` appears
 in `skills/inquest/sticky-template.md` (line 1), in `check-sticky.sh` which

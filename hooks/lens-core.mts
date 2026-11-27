@@ -92,8 +92,8 @@ export const paneOpen = (browser: string | undefined, html: string): string[] =>
   browser ? ['terminal-browser', 'new-tab', '--browser', browser, html] : ['terminal-browser', 'open', html, '--split', 'right', '--no-merge'];
 
 export function paneTarget(stdout: string): Pane | null {
-  const m = stdout.match(/^opened (?:tab (\d+) in )?(\S+)/m);
-  return m ? { browser: m[2], tab: m[1] } : null;
+  const [, tab, browser] = stdout.match(/^opened (?:tab (\d+) in )?(\S+)/m) ?? [];
+  return browser ? { browser, tab } : null;
 }
 
 export const paneAction = ({ browser, tab }: Pane): string[] =>
