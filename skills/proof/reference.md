@@ -98,7 +98,7 @@ In the run: `auth login <profile>`. If the form is not auto-detected, take
 `snapshot -i` and pass selectors:
 
 ```sh
-agent-browser auth login <profile> \
+ab auth login <profile> \
   --username-selector 'input[name=username]' \
   --password-selector 'input[name=password]' \
   --submit-selector 'button[type=submit]'

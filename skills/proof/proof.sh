@@ -110,6 +110,49 @@ proof_teardown() { # kill the port listener only if proof started it
   fi
 }
 
+proof_pane_open() { # proof_pane_open <url>  — in Rex, a floating pane that runs terminal-browser; sets TB_KEY, LAYER
+  proof_paths; . "$PROOF_RUN"
+  [ -n "${REX_BLOCK:-}" ] && command -v terminal-browser >/dev/null 2>&1 || return 1
+  out=$(node -e 'console.log(JSON.stringify({ bounds: [0.05, 0.05, 0.9, 0.9], focus: false, layout: { block: {
+    flavor: "com.superlogical.terminal.shell", label: "proof",
+    options: { command: ["terminal-browser", "open", "--no-merge", process.argv[1]] } } } }))' "$1" \
+    | rex api call -s "$REX_BLOCK" session.new_layer -) || return 1
+  layer=$(printf '%s' "$out" | node -e 'console.log(JSON.parse(require("fs").readFileSync(0)).layer_id)')
+  block=$(printf '%s' "$out" | node -e 'console.log(JSON.parse(require("fs").readFileSync(0)).block_ids[0])')
+  proof_set LAYER "$layer" >/dev/null
+  # Each `action` call reconnects: `open` and `auth login` drop the viewport and the init script.
+  node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[2], JSON.stringify([
+    ["set", "viewport", "1440", "900"], ["eval", fs.readFileSync(process.argv[1], "utf8")]]))' \
+    "$SKILL_DIR/cursor.js" "$PROOF_HOME/out/pane-guard.json"
+  i=0
+  while [ $i -lt 40 ]; do
+    key=$(terminal-browser ls --json 2>/dev/null | node -e '
+      const j = JSON.parse(require("fs").readFileSync(0));
+      console.log(j.browsers.find(b => b.pane.pane === process.argv[1])?.key ?? "")' "$block" 2>/dev/null)
+    [ -n "$key" ] && { proof_set TB_KEY "$key" >/dev/null; echo "PANE_OPEN $key"; return 0; }
+    i=$((i + 1)); sleep 0.5
+  done
+  echo "PANE_NOT_READY $block"; proof_browser_close; return 1
+}
+
+ab() { # agent-browser, or the proof pane's terminal-browser tab when TB_KEY is set
+  [ -n "${TB_KEY:-}" ] || { agent-browser "$@"; return; }
+  proof_paths
+  terminal-browser action --browser "$TB_KEY" -- batch --json < "$PROOF_HOME/out/pane-guard.json" >/dev/null 2>&1
+  terminal-browser action --browser "$TB_KEY" -- "$@"
+}
+
+proof_browser_close() { # close the proof pane, or the agent-browser session
+  proof_paths; . "$PROOF_RUN"
+  if [ -n "${LAYER:-}" ]; then
+    terminal-browser action --browser "${TB_KEY:-}" done >/dev/null 2>&1
+    printf '{"layer_id":"%s"}' "$LAYER" | rex api call -s "$REX_BLOCK" session.close_layer - >/dev/null
+    proof_set LAYER '' >/dev/null; proof_set TB_KEY '' >/dev/null
+  else
+    agent-browser close
+  fi
+}
+
 proof_seg_next() { # print the next segment path and remember it in SEGMENTS
   proof_paths; . "$PROOF_RUN"
   n=$(( $(printf '%s' "${SEGMENTS:-}" | wc -w) + 1 ))

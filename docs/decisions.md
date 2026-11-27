@@ -120,3 +120,14 @@ pictures stay one tab away. The model still gets a screenshot to check.
 Rejected: a kitty-graphics viewer that forwards mouse events to
 agent-browser — the browser pane does this natively.
 Rejected: inline and pane together — the same picture twice.
+
+## 2026-11-27 — proof records in a floating terminal-browser pane in Rex
+Why: the developer wants to watch the walk live and take over when needed. A
+floating Rex layer keeps the session's splits as they are, and the browser
+viewport stays 1440×900 whatever the pane size. `ab` in `proof.sh` sends each
+command to the pane, and to agent-browser outside Rex.
+Constraint: each `terminal-browser action` call reconnects, so `open` and
+`auth login` drop the viewport and the `cursor.js` init script. `ab` puts both
+back before every command.
+Rejected: a split pane — the video takes the pane shape (a full-width bottom
+split recorded 5760×1154).
