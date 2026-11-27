@@ -125,7 +125,7 @@ drop items. Never start a Phase 8 write while an earlier item is open.
    subagents (or the in-session fallback reason recorded)
 4. Phase 4 — prior threads + CI pulled (PR mode)
 5. Phase 5 — all four lanes returned; `Checked:` lines cover all eight
-   distrust passes
+   distrust passes, or a lane is recorded as not covered
 6. Phase 6 — Codex result collected at the PR head SHA (CLI output, or the
    user's pasted chat output), or the recorded reason confirmed
 7. Phase 7 — judge returned: merged findings + score on 0–10, adopted
@@ -287,9 +287,8 @@ judge — scope per the Non-negotiables row. REVIEW.md absent → `$CORE`
 ## Phase 4 — Prior review state + CI (PR mode only)
 
 Resolve `OWNER`, `REPO`, `HEAD_SHA`, `ME` once (reference.md §1 — retry
-transient failures). Pull in parallel (reference.md §2, GraphQL fallback
-included): existing reviews + issue comments, inline review comments
-(paginated), CI checks.
+transient failures). Pull in parallel (reference.md §2): existing reviews + issue comments,
+every review thread through paginated GraphQL, CI checks.
 
 - **Dedup before posting, two signals.** Structural: same `path` within ±5
   lines. Semantic: same failure mode in the body. Both match → no new thread;
@@ -316,7 +315,9 @@ Wait for lanes A, B, C and D. Check each report: a `Checked:` line per
 assigned distrust pass plus the always-flag scan, and every finding in the
 `Finding` shape with a `location` inside the diff. A lane missing a
 `Checked:` line is re-run with the same brief. Together the four reports
-must name all eight passes. Keep the reports verbatim for the judge; do not
+must name all eight passes. A re-run that fails again → record
+`Lane <X>: not covered — <reason>` and send that line to the judge in the
+lane's place. Never fill the gap yourself. Keep the reports verbatim for the judge; do not
 summarise, filter, or grade them here. "Review" in `$CORE` runs only inside
 the lanes and the judge.
 
@@ -382,6 +383,13 @@ failure → STOP, report, fix. No write call until all pass:
    ```bash
    bash "$SKILL_DIR/check-sticky.sh" sticky.md
    ```
+8. The PR head did not move since the review. Run it again right before the
+   write, after the user confirms:
+   ```bash
+   [ "$(gh pr view <N> --json headRefOid -q .headRefOid)" = "$HEAD_SHA" ] && echo HEAD_OK
+   ```
+   No `HEAD_OK` → do not post. Tell the user the PR moved to a new head,
+   and offer a new round.
 
 ### Review event
 
@@ -393,6 +401,8 @@ failure → STOP, report, fix. No write call until all pass:
   `REQUEST_CHANGES`. Failing check you cannot dismiss (flake/unrelated) → no
   approve; `COMMENT`, name the check. Acknowledged false positive → APPROVE
   may stand; name the check with "dismiss before merge".
+- **Rule 3 — coverage gate.** A lane recorded as not covered → no approve;
+  `COMMENT`. The sticky names the lane and the reason.
 
 ### Confirm with the user (PR mode — after the gate, before any write)
 
@@ -449,7 +459,8 @@ bash "$SKILL_DIR/check-sticky.sh" sticky.md   # must print OK
   direction. (source)`. Never restate the inline thread body.
 - One sentence for the cleared passes ("Four lanes, Codex and the judge
   ran in fresh sessions; prior threads verified, not re-raised."). The
-  in-session fallback from `$CORE` "Dispatch" is named here when it fired. Security or hygiene get a sentence ONLY when
+  in-session fallback from `$CORE` "Dispatch" is named here when it fired,
+  and so is every lane not covered. Security or hygiene get a sentence ONLY when
   something failed or deserves note — no pass/fail tables, no empty sections,
   no boilerplate.
 - Footer: `Head`/`Base` line, `Codex:` + `CI:` line, `Intent:` line, `Verdict:`

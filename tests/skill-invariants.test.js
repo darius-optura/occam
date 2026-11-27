@@ -341,3 +341,23 @@ test('razor sends pictures through lens, main session only', () => {
     assert.ok(/lens skill\. Main session only\./.test(read(...f)), `${f.join('/')} lost the lens rule`);
   }
 });
+
+test('inquest posts only at the reviewed head, and never loses a review to one bad anchor', () => {
+  const ref = read('skills', 'inquest', 'reference.md');
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  // without commit_id the threads anchor to whatever the head is when the POST lands.
+  assert.ok(ref.includes('"commit_id": "<HEAD_SHA>"'), 'review payload lost commit_id');
+  assert.ok(/HEAD_OK/.test(skill), 'pre-post gate lost the head re-check');
+  // a 422 on the batch must fall back to single comments, not drop the review.
+  assert.ok(ref.includes('*"HTTP 422"*') && ref.includes('OFF_DIFF'), 'review POST lost the 422 fallback');
+  // threads past the first 100 vanish from dedup; resolved state exists only in GraphQL.
+  assert.ok(ref.includes('pageInfo{hasNextPage endCursor}') && ref.includes('isResolved'), 'thread fetch lost pagination');
+  assert.ok(ref.includes("tr -d '\\000-\\010"), 'thread fetch lost the control-character strip');
+});
+
+test('a lane that never reports blocks the approve', () => {
+  const core = read('skills', 'scrutiny', 'review-core.md');
+  const skill = read('skills', 'inquest', 'SKILL.md');
+  assert.ok(core.includes('not covered — <reason>'), 'core lost the not-covered lane line');
+  assert.ok(/Rule 3 — coverage gate/.test(skill), 'inquest lost the coverage gate');
+});

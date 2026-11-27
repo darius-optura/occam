@@ -220,6 +220,9 @@ in the output. Never fall back silently.
 Every lane also runs the always-flag scan; the judge dedups the overlap.
 Together the lanes cover all five categories and all eight passes. A lane
 that returns without a `Checked:` line for each of its passes is re-run.
+A lane that fails again, or never returns, is not covered: the judge gets
+`Lane <X>: not covered — <reason>` in its place. A review with a lane not
+covered never approves, and its output names the lane.
 
 ### Lane brief
 
@@ -307,7 +310,8 @@ External pass: <Codex output verbatim, or "none">
    Findings — each in the lane `Finding` shape plus
    `sources: <lanes and/or external, e.g. A, C, codex>`
    Dropped — `location — reason` per dropped finding
-   Passes — the eight distrust passes, each with its lane and finding count
+   Passes — the eight distrust passes, each with its lane and finding
+   count, or `not covered — <reason>` for a lane that did not report
    Score: N/10 — <deductions itemised>
 
 Do not modify files. Do not post anywhere.
