@@ -172,3 +172,8 @@ the zoom divides the emulated viewport: `set viewport 1440 900` gave a page
 `devicePixelRatio` and sends `ctrl+0` to the pane when it is not 1.
 Rejected: one reset at pane start — Chrome keeps zoom per host, so the next
 host can zoom again.
+
+## 2026-11-27 — The proof pane is 16:10 and the page scales to it
+Why: terminal-browser stretches the page to fill its pane. A 1440×900 page in a pane of another shape looks stretched, and at scale 1 it fills a quarter of a Retina pane. The pane resizes to 16:10, the scale is the settled pane width over 1440, and the guard checks `innerWidth` is 1440.
+Rejected: scale 1 in the 0.9×0.9 pane — tiny page, wrong aspect. Read the size before the resize settles — the scale comes from the old pane and the page stretches again.
+A Rex session that is off screen leaves the pane at the 80×24 default, 640×384 px, so proof waits 30 s for a real size and then falls back to the headed window.

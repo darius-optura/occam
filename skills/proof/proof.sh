@@ -110,6 +110,12 @@ proof_teardown() { # kill the port listener only if proof started it
   fi
 }
 
+proof_pane_viewport() { # proof_pane_viewport <key>  — print "<width> <height>" of the pane's page, in device px
+  terminal-browser ls --json 2>/dev/null | node -e '
+    const b = JSON.parse(require("fs").readFileSync(0)).browsers.find(b => b.key === process.argv[1]);
+    if (b?.viewport) console.log(b.viewport.width, b.viewport.height)' "$1" 2>/dev/null
+}
+
 proof_pane_open() { # proof_pane_open <url>  — in Rex, a floating pane that runs terminal-browser; sets TB_KEY, LAYER
   proof_paths; . "$PROOF_RUN"
   [ -n "${REX_BLOCK:-}" ] && command -v terminal-browser >/dev/null 2>&1 || return 1
@@ -120,22 +126,43 @@ proof_pane_open() { # proof_pane_open <url>  — in Rex, a floating pane that ru
   layer=$(printf '%s' "$out" | node -e 'console.log(JSON.parse(require("fs").readFileSync(0)).layer_id)')
   block=$(printf '%s' "$out" | node -e 'console.log(JSON.parse(require("fs").readFileSync(0)).block_ids[0])')
   proof_set LAYER "$layer" >/dev/null; proof_set PANE_BLOCK "$block" >/dev/null
-  # Each `action` call reconnects: `open` and `auth login` drop the viewport and the init script.
-  node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[2], JSON.stringify([
-    ["set", "viewport", "1440", "900"], ["eval", fs.readFileSync(process.argv[1], "utf8")], ["eval", "devicePixelRatio"]]))' \
-    "$SKILL_DIR/cursor.js" "$PROOF_HOME/out/pane-guard.json"
-  i=0
-  while [ $i -lt 40 ]; do
+  i=0; key=""
+  while [ $i -lt 40 ] && [ -z "$key" ]; do
     key=$(terminal-browser ls --json 2>/dev/null | node -e '
       const j = JSON.parse(require("fs").readFileSync(0));
       console.log(j.browsers.find(b => b.pane.pane === process.argv[1])?.key ?? "")' "$block" 2>/dev/null)
-    [ -n "$key" ] && { proof_set TB_KEY "$key" >/dev/null; echo "PANE_OPEN $key"; return 0; }
-    i=$((i + 1)); sleep 0.5
+    [ -n "$key" ] || { i=$((i + 1)); sleep 0.5; }
   done
-  echo "PANE_NOT_READY $block"; proof_browser_close; return 1
+  [ -n "$key" ] || { echo "PANE_NOT_READY $block"; proof_browser_close; return 1; }
+  proof_set TB_KEY "$key" >/dev/null
+
+  # terminal-browser stretches the page to the pane, so the pane must be 16:10 like
+  # the 1440x900 viewport. The first layer is 0.9 x 0.9 of the window: its pane size
+  # gives the window size.
+  # 640x384 is the 80x24 default of a pane no Rex client draws yet: the session is off screen.
+  i=0; first=$(proof_pane_viewport "$key")
+  while [ $i -lt 60 ] && { [ -z "$first" ] || [ "$first" = "640 384" ]; }; do
+    [ $i -eq 4 ] && echo "PANE_WAITING bring the Rex session to the front"
+    sleep 0.5; first=$(proof_pane_viewport "$key"); i=$((i + 1))
+  done
+  [ -n "$first" ] && [ "$first" != "640 384" ] || { echo "PANE_HIDDEN $block"; proof_browser_close; return 1; }
+  bounds=$(node -e 'const [w, h] = process.argv.slice(1).map(Number), W = w / 0.9, H = h / 0.9;
+    let hf = 0.9, wf = hf * H * 1.6 / W; if (wf > 0.9) { wf = 0.9; hf = wf * W / 1.6 / H }
+    const r = n => +n.toFixed(4); console.log(JSON.stringify([r((1 - wf) / 2), r((1 - hf) / 2), r(wf), r(hf)]))' $first)
+  printf '{"layer_id":"%s","bounds":%s}' "$layer" "$bounds" | rex api call -s "$REX_BLOCK" session.resize_layer - >/dev/null
+  i=0; size=$first
+  while [ $i -lt 20 ] && [ "$size" = "$first" ]; do sleep 0.25; size=$(proof_pane_viewport "$key"); i=$((i + 1)); done
+  # One CSS px of the 1440 x 900 page = dsf device px of the pane.
+  dsf=$(node -e 'const [w, h] = process.argv.slice(1).map(Number); console.log(Math.floor(Math.min(w / 1440, h / 900) * 1000) / 1000)' $size)
+  proof_set PANE_DSF "$dsf" >/dev/null
+  # Each `action` call reconnects: `open` and `auth login` drop the viewport and the init script.
+  node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[2], JSON.stringify([
+    ["set", "viewport", "1440", "900", process.argv[3]], ["eval", fs.readFileSync(process.argv[1], "utf8")], ["eval", "innerWidth"]]))' \
+    "$SKILL_DIR/cursor.js" "$PROOF_HOME/out/pane-guard.json" "$dsf"
+  echo "PANE_OPEN $key $size dsf=$dsf"
 }
 
-proof_pane_guard() { # print the page's devicePixelRatio after the viewport and cursor.js are back
+proof_pane_guard() { # print the page's innerWidth after the viewport and cursor.js are back
   terminal-browser action --browser "$TB_KEY" -- batch --json < "$PROOF_HOME/out/pane-guard.json" 2>/dev/null \
     | node -e 'try { const s = JSON.parse(require("fs").readFileSync(0)); console.log(s[s.length - 1].result.result) } catch {}'
 }
@@ -145,7 +172,7 @@ ab() { # agent-browser, or the proof pane's terminal-browser tab when TB_KEY is 
   proof_paths
   # The pane zooms some hosts, which shrinks the 1440 CSS px viewport; ctrl+0 resets it.
   case $(proof_pane_guard) in
-    1|'') ;;
+    1440|'') ;;
     *) rex send-key -s "$REX_BLOCK" -b "$PANE_BLOCK" ctrl+0 >/dev/null 2>&1; proof_pane_guard >/dev/null ;;
   esac
   terminal-browser action --browser "$TB_KEY" -- "$@"
@@ -184,6 +211,12 @@ proof_concat() { # join the non-empty SEGMENTS into MP4_OUT; a single segment is
     for s in "$@"; do printf "file '%s'\n" "$s" >> "$list"; done
     ffmpeg -y -loglevel error -f concat -safe 0 -i "$list" -c copy "$MP4_OUT" || return 1
     rm -f "$@"
+  fi
+  # A pane records at its device px; the proof is a 1440 px wide page.
+  w=$(ffprobe -v error -select_streams v:0 -show_entries stream=width -of csv=p=0 "$MP4_OUT" 2>/dev/null)
+  if [ "${w:-0}" -gt 1440 ] 2>/dev/null; then
+    ffmpeg -y -loglevel error -i "$MP4_OUT" -vf scale=1440:-2:flags=lanczos -pix_fmt yuv420p "$MP4_OUT.tmp.mp4" \
+      && mv "$MP4_OUT.tmp.mp4" "$MP4_OUT"
   fi
   echo "SEGMENTS_JOINED $# -> $MP4_OUT"
 }
