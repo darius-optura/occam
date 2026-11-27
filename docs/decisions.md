@@ -164,3 +164,11 @@ uncommitted files or commits that are on no remote and not in the PR.
 Rejected: the watcher removes the worktree itself — it would bypass the
 backend teardown (`hw-rm`, `rw-rm`) and the archive checks.
 Rejected: sweeping worktrees with no PR — they are the user's own work.
+
+## 2026-11-27 — proof resets the pane zoom before every command
+Why: terminal-browser zooms some hosts (3.75 on one, 1.94 on another), and
+the zoom divides the emulated viewport: `set viewport 1440 900` gave a page
+383 CSS px wide, so apps drew their mobile layout. The `ab` guard reads
+`devicePixelRatio` and sends `ctrl+0` to the pane when it is not 1.
+Rejected: one reset at pane start — Chrome keeps zoom per host, so the next
+host can zoom again.

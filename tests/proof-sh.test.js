@@ -119,7 +119,7 @@ case "$*" in *new_layer*) echo '{"layer_id":"layer:L","block_ids":["block:B"],"r
 echo "tb $*" >> "${log}"
 case "$1" in
   ls) echo '{"browsers":[{"key":"9-1","pane":{"pane":"block:A"}},{"key":"9-2","pane":{"pane":"block:B"}}]}' ;;
-  action) [ "$5" = batch ] && cat >> "${log}"; echo ok ;;
+  action) if [ "$5" = batch ]; then cat >> "${log}"; echo; printf '[{"result":{}},{"result":{}},{"result":{"result":%s}}]' "\${FAKE_DPR:-1}"; else echo ok; fi ;;
 esac
 `, { mode: 0o755 });
   return { dir, log };
@@ -143,8 +143,16 @@ test('proof_pane_open floats a terminal-browser and ab drives its tab', () => {
   fs.writeFileSync(log, '');
   run(`. "${home}/out/run-current.env"; ab click @e3`);
   const ab = fs.readFileSync(log, 'utf8');
-  assert.match(ab, /tb action --browser 9-2 -- batch --json\n\[\["set","viewport","1440","900"\],\["eval","\/\/ cursor\.js/);
+  assert.match(ab, /tb action --browser 9-2 -- batch --json\n\[\["set","viewport","1440","900"\],\["eval","\/\/ cursor\.js[^\n]*\["eval","devicePixelRatio"\]\]/);
   assert.match(ab, /tb action --browser 9-2 -- click @e3\n/);
+
+  // the pane's own zoom shrinks the emulated viewport; ab resets it with ctrl+0.
+  fs.writeFileSync(log, '');
+  run(`. "${home}/out/run-current.env"; ab wait 100`, { FAKE_DPR: '1.937' });
+  assert.match(fs.readFileSync(log, 'utf8'), /rex send-key -s block:me -b block:B ctrl\+0$/m);
+  fs.writeFileSync(log, '');
+  run(`. "${home}/out/run-current.env"; ab wait 100`);
+  assert.doesNotMatch(fs.readFileSync(log, 'utf8'), /send-key/);
 
   fs.writeFileSync(log, '');
   run(`. "${home}/out/run-current.env"; proof_browser_close`);

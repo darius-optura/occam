@@ -119,10 +119,10 @@ proof_pane_open() { # proof_pane_open <url>  — in Rex, a floating pane that ru
     | rex api call -s "$REX_BLOCK" session.new_layer -) || return 1
   layer=$(printf '%s' "$out" | node -e 'console.log(JSON.parse(require("fs").readFileSync(0)).layer_id)')
   block=$(printf '%s' "$out" | node -e 'console.log(JSON.parse(require("fs").readFileSync(0)).block_ids[0])')
-  proof_set LAYER "$layer" >/dev/null
+  proof_set LAYER "$layer" >/dev/null; proof_set PANE_BLOCK "$block" >/dev/null
   # Each `action` call reconnects: `open` and `auth login` drop the viewport and the init script.
   node -e 'const fs = require("fs"); fs.writeFileSync(process.argv[2], JSON.stringify([
-    ["set", "viewport", "1440", "900"], ["eval", fs.readFileSync(process.argv[1], "utf8")]]))' \
+    ["set", "viewport", "1440", "900"], ["eval", fs.readFileSync(process.argv[1], "utf8")], ["eval", "devicePixelRatio"]]))' \
     "$SKILL_DIR/cursor.js" "$PROOF_HOME/out/pane-guard.json"
   i=0
   while [ $i -lt 40 ]; do
@@ -135,10 +135,19 @@ proof_pane_open() { # proof_pane_open <url>  — in Rex, a floating pane that ru
   echo "PANE_NOT_READY $block"; proof_browser_close; return 1
 }
 
+proof_pane_guard() { # print the page's devicePixelRatio after the viewport and cursor.js are back
+  terminal-browser action --browser "$TB_KEY" -- batch --json < "$PROOF_HOME/out/pane-guard.json" 2>/dev/null \
+    | node -e 'try { const s = JSON.parse(require("fs").readFileSync(0)); console.log(s[s.length - 1].result.result) } catch {}'
+}
+
 ab() { # agent-browser, or the proof pane's terminal-browser tab when TB_KEY is set
   [ -n "${TB_KEY:-}" ] || { agent-browser "$@"; return; }
   proof_paths
-  terminal-browser action --browser "$TB_KEY" -- batch --json < "$PROOF_HOME/out/pane-guard.json" >/dev/null 2>&1
+  # The pane zooms some hosts, which shrinks the 1440 CSS px viewport; ctrl+0 resets it.
+  case $(proof_pane_guard) in
+    1|'') ;;
+    *) rex send-key -s "$REX_BLOCK" -b "$PANE_BLOCK" ctrl+0 >/dev/null 2>&1; proof_pane_guard >/dev/null ;;
+  esac
   terminal-browser action --browser "$TB_KEY" -- "$@"
 }
 
