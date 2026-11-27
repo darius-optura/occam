@@ -109,3 +109,14 @@ tool says `shown inline` for `CLAUDE_CODE_FORCE_TERMINAL_IMAGES=1`, Ghostty
 and kitty, and `not shown inline` elsewhere.
 Ceiling: `razor:` marker in `hooks/lens-core.mts`; read an engine flag when
 one exists.
+
+## 2026-11-27 — lens opens pictures in a terminal-browser pane in Rex
+Why: Rex now runs `terminal-browser`, so the page can live beside the chat
+with no height limit and with working scripts. Claude can draw interactive
+visualizations, not only still pictures. The mod uses the pane when
+`REX_BLOCK` is set and `terminal-browser open` succeeds; otherwise it draws
+inline as before. Each call opens a new tab in the same split, so earlier
+pictures stay one tab away. The model still gets a screenshot to check.
+Rejected: a kitty-graphics viewer that forwards mouse events to
+agent-browser — the browser pane does this natively.
+Rejected: inline and pane together — the same picture twice.
